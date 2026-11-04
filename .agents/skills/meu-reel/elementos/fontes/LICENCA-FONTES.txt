@@ -1,0 +1,4 @@
+Montserrat (Julieta Ulanovsky e colaboradores) e Playfair Display (Claus Eggers Sørensen)
+são licenciadas pela SIL Open Font License 1.1 (uso e redistribuição livres, inclusive comercial).
+Arquivos obtidos dos pacotes npm @fontsource/montserrat e @fontsource/playfair-display (5.3.0).
+Texto da licença: https://openfontlicense.org

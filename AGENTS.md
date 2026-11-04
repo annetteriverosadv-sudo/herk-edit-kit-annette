@@ -58,10 +58,10 @@ new personal footage. Never print secrets or copy private media into library exa
 
 ## Riveros Advocacia (house style)
 
-For any Riveros/Annette reel, read `video-projects/riveros/DESIGN.md` first and
-follow it over generic style defaults. Whenever the user corrects an edit, append
-the correction as a new dated rule under "Correções" in that file (and update the
-older rule it overrides) before continuing.
+For any Riveros/Annette reel, use the `meu-reel` skill and its
+`.claude/skills/meu-reel/DESIGN.md`; they override generic style defaults. Whenever
+the user corrects an edit, append the correction as a new dated rule under
+"Correções" in that DESIGN.md (and update the older rule it overrides) before continuing.
 
 ## Editing and timing
 

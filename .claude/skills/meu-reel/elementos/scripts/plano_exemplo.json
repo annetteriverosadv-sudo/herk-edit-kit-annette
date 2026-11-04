@@ -1,0 +1,29 @@
+{
+  "_como_usar": "Copie para video-projects/<slug>/assets/plano.json e troque pelos dados do vídeo novo. Palavras: 'texto#ocorrência+deslocamento' (ex.: 'entender#2+1' = a palavra logo depois do 2º 'entender'; 'fim' = última palavra). Em 'blocos' a busca é na transcrição de cada gravação; no resto, na transcrição final já cortada (assets/transcript.json).",
+  "titulo": "Auxílio-acidente",
+  "blocos": [
+    {"take": "IMG_2991", "de": "Já", "ate": "direito", "nome": "gancho: objeção"},
+    {"take": "IMG_2991", "de": "uma#2", "ate": "outra", "nome": "contradição"},
+    {"take": "IMG_2991", "de": "Tem", "ate": "funciona", "nome": "o mito"},
+    {"take": "IMG_2993", "de": "O", "ate": "fim", "nome": "natureza e exemplo"},
+    {"take": "IMG_2996", "de": "inicio", "ate": "fim", "nome": "continuar trabalhando"},
+    {"take": "IMG_2997", "de": "O", "ate": "fim", "nome": "fechamento"}
+  ],
+  "gancho": {
+    "ate": "direito",
+    "linhas": [
+      {"texto": "“Já voltei a trabalhar.", "em": "Já", "estilo": "sans"},
+      {"texto": "Não tenho mais direito?”", "em": "Não", "estilo": "serifa"}
+    ]
+  },
+  "titulos": [
+    {"de": "natureza", "ate": "indenizatória", "pequeno": "natureza", "grande": "indenizatória", "grande_em": "indenizatória"}
+  ],
+  "listas": [
+    {"de": "trabalhadores", "ate": "especiais", "titulo": "Trabalhadores",
+     "itens": [["com carteira assinada", "carteira"], ["domésticos", "domésticos"], ["rurais", "rurais"], ["segurados especiais", "segurados"]]},
+    {"de": "entender#2+1", "ate": "fim", "titulo": "É preciso entender",
+     "itens": [["o acidente", "acidente#2"], ["a sequela", "sequela#2"], ["a atividade exercida", "atividade"], ["os demais requisitos", "demais"]],
+     "rodape": ["de cada situação.", "cada-1"]}
+  ]
+}
