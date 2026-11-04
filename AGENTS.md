@@ -56,6 +56,13 @@ renders are gitignored. The 12 already-published projects are retained as teachi
 projects stay ignored. Do not treat existing public examples as permission to add
 new personal footage. Never print secrets or copy private media into library examples.
 
+## Riveros Advocacia (house style)
+
+For any Riveros/Annette reel, read `video-projects/riveros/DESIGN.md` first and
+follow it over generic style defaults. Whenever the user corrects an edit, append
+the correction as a new dated rule under "Correções" in that file (and update the
+older rule it overrides) before continuing.
+
 ## Editing and timing
 
 Before choosing a transcription, asset-generation, or voiceover service, read
