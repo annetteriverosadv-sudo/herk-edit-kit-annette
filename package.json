@@ -5,7 +5,8 @@
   "type": "commonjs",
   "description": "Herk Edit Kit by Nate Herk, for Codex and Claude Code: long-form edits, reels, storytelling, and motion graphics.",
   "scripts": {
-    "transcribe": "node scripts/transcribe-elevenlabs.mjs",
+    "transcribe": "node scripts/transcribe-whisper.mjs",
+    "transcribe:elevenlabs": "node scripts/transcribe-elevenlabs.mjs",
     "validate-beats": "node scripts/validate-beat-sync.mjs",
     "preflight": "node scripts/preflight.mjs",
     "sync:skills": "node scripts/sync-codex-skills.mjs",

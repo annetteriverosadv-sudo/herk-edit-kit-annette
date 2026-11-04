@@ -18,10 +18,11 @@ This agent is deterministic and transcript-driven, so its output (`*.silence-tra
 
 A word-level transcript JSON. Either the ElevenLabs Scribe shape
 (`{ words: [{ text, start, end, type }], audio_duration_secs }`) or a generic
-`{ words: [{ text, start, end }] }`. Generate one with the workspace transcriber:
+`{ words: [{ text, start, end }] }`. Generate one with the workspace transcriber
+(local whisper.cpp, nothing uploaded):
 
 ```bash
-node scripts/transcribe-elevenlabs.mjs path/to/raw.mp4    # -> path/to/raw.json
+npm run transcribe -- path/to/raw.mp4    # -> path/to/raw.json
 ```
 
 ## Usage
