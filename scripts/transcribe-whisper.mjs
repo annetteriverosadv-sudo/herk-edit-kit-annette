@@ -16,6 +16,7 @@
 //   --duration <secs>     transcribe only this many seconds (test clips)
 //   --threads <n>         CPU threads (default: all cores)
 //   --prompt <text>       optional context/vocabulary hint for Whisper
+//   --dtw <preset|off>    token-level timing (default: auto from model name, e.g. small)
 //   --keep-audio          keep the extracted 16 kHz WAV next to the output
 //
 // Times are always written on the SOURCE timeline: when --start is used, the
@@ -53,7 +54,7 @@ if (args.length === 0 || args.includes("--help") || args.includes("-h")) {
   console.log(
     "Usage: node scripts/transcribe-whisper.mjs <input> [--output path] [--model path] " +
       "[--bin path] [--language pt] [--start secs] [--duration secs] [--threads n] " +
-      "[--prompt text] [--keep-audio]",
+      "[--prompt text] [--dtw preset|off] [--keep-audio]",
   );
   exit(args.length === 0 ? 1 : 0);
 }
@@ -68,6 +69,7 @@ const opts = {
   duration: null,
   threads: Math.max(1, availableParallelism()),
   prompt: "",
+  dtw: cfg("WHISPER_DTW") || "auto",
   keepAudio: false,
 };
 for (let i = 0; i < args.length; i++) {
@@ -80,6 +82,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === "--duration") opts.duration = Number(args[++i]);
   else if (a === "--threads") opts.threads = Number(args[++i]);
   else if (a === "--prompt") opts.prompt = args[++i];
+  else if (a === "--dtw") opts.dtw = args[++i];
   else if (a === "--keep-audio") opts.keepAudio = true;
   else if (a.startsWith("--")) die(`unknown option: ${a}`);
   else if (!opts.input) opts.input = a;
@@ -126,23 +129,25 @@ ffArgs.push("-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", wavPath);
 const ff = spawnSync("ffmpeg", ffArgs, { encoding: "utf8" });
 if (ff.status !== 0) die(`ffmpeg audio extraction failed: ${ff.stderr}`);
 
-// --- run whisper.cpp: one segment per word (-ml 1 -sow), full JSON ---
+// --- DTW preset from the model file name (ggml-small.bin -> small) ---
+if (opts.dtw === "auto") {
+  const m = basename(opts.model).match(/^ggml-(tiny|base|small|medium|large-v[123](?:-turbo)?|large)(\.en)?\.bin$/);
+  opts.dtw = m ? m[1].replace(/-/g, ".") + (m[2] ?? "") : "off";
+}
+const useDtw = opts.dtw !== "off";
+
+// --- run whisper.cpp ---
+// DTW mode: natural segments, token-level aligned times (needs flash attention off).
+// Fallback: one segment per word (-ml 1 -sow), coarser timing.
 const outPrefix = join(workDir, "out");
-const wArgs = [
-  "-m", opts.model,
-  "-f", wavPath,
-  "-l", opts.language,
-  "-t", String(opts.threads),
-  "-ml", "1",
-  "-sow",
-  "-ojf",
-  "-of", outPrefix,
-  "-np",
-];
+const wArgs = ["-m", opts.model, "-f", wavPath, "-l", opts.language, "-t", String(opts.threads)];
+if (useDtw) wArgs.push("-dtw", opts.dtw, "-nfa");
+else wArgs.push("-ml", "1", "-sow");
+wArgs.push("-ojf", "-of", outPrefix, "-np");
 if (opts.prompt) wArgs.push("--prompt", opts.prompt);
 console.log(
-  `transcribing locally with ${basename(opts.model)} (${opts.language}), ` +
-    `${(clipEnd - opts.start).toFixed(1)}s of audio ...`,
+  `transcribing locally with ${basename(opts.model)} (${opts.language}, ` +
+    `${useDtw ? `dtw ${opts.dtw}` : "segment timing"}), ${(clipEnd - opts.start).toFixed(1)}s of audio ...`,
 );
 const t0 = Date.now();
 const w = spawnSync(opts.bin, wArgs, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
@@ -152,7 +157,52 @@ const raw = JSON.parse(readFileSync(`${outPrefix}.json`, "utf8"));
 // --- normalize to the kit's word format ---
 const round = (n) => Math.round(n * 1000) / 1000;
 const words = [];
-for (const seg of raw.transcription ?? []) {
+const isEventText = (t) => /^[\[(].*[\])]$/.test(t); // e.g. [Música], (risos)
+
+if (useDtw) {
+  // Build words from tokens: a token starting with a space opens a new word;
+  // sub-word pieces and punctuation join the current word.
+  const groups = [];
+  for (const seg of raw.transcription ?? []) {
+    const segEnd = (seg.offsets?.to ?? 0) / 1000;
+    for (const tok of seg.tokens ?? []) {
+      const t = tok.text ?? "";
+      if (!t || /^\[_/.test(t)) continue; // special tokens
+      const at = tok.t_dtw >= 0 ? tok.t_dtw / 100 : (tok.offsets?.from ?? 0) / 1000;
+      const cur = groups[groups.length - 1];
+      if (!cur || /^\s/.test(t) || cur.segEnd !== segEnd) {
+        groups.push({ text: t.trim(), start: at, last: at, lastLen: t.trim().length, segEnd });
+      } else {
+        cur.text += t;
+        cur.last = at;
+        cur.lastLen = t.length;
+      }
+    }
+  }
+  const real = groups.filter((g) => g.text && !/^[.,!?;:…]+$/.test(g.text));
+  for (let i = 0; i < groups.length; i++) {
+    const g = groups[i];
+    if (!g.text) continue;
+    if (/^[.,!?;:…]+$/.test(g.text) && words.length) {
+      words[words.length - 1].text += g.text; // stray punctuation token
+      continue;
+    }
+    const next = real[real.indexOf(g) + 1];
+    // A word ends when the next one starts, unless there is a pause: then it
+    // ends shortly after its last aligned token (and never past its segment).
+    const natural = g.last + Math.max(0.12, 0.06 * g.lastLen) + 0.1;
+    let end = Math.min(next ? next.start : g.segEnd, natural, g.segEnd);
+    if (end < g.start) end = g.start;
+    words.push({
+      text: g.text,
+      start: round(opts.start + g.start),
+      end: round(opts.start + end),
+      type: isEventText(g.text) ? "audio_event" : "word",
+    });
+  }
+}
+
+for (const seg of useDtw ? [] : raw.transcription ?? []) {
   const rawText = seg.text ?? "";
   const text = rawText.trim();
   if (!text) continue;
