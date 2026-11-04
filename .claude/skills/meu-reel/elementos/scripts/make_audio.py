@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Passo 6 — trilha + efeitos + mixagem final, com os sons da pasta elementos/audio (sons.py).
 
-- Trilha: batida leve e discreta (preferência dela), 18-22 dB abaixo da voz e abaixando quando ela fala.
+- Trilha de fundo: DESLIGADA por padrão (correção de 04/11/2026: "ficou com ruído e estragou o áudio").
+  Só entra se o plano tiver "trilha": true — aí 18-22 dB abaixo da voz e abaixando quando ela fala.
 - Transição (troca de assunto, junto com o film burn): sopro suave + tom quente, bem baixos.
 - Toque abafado quando entra a palavra grande de cada título; clique seco em cada item de lista.
 - Master: -14 LUFS medido em ESTÉREO (a mixagem é salva em estéreo; medir em mono dá +3 dB no vídeo final).
@@ -39,11 +40,15 @@ A = caminho("assets")
 write(os.path.join(A, "music.wav"), 0.5 * music)
 write(os.path.join(A, "sfx.wav"), sfx)
 
-fc = ("[0:a]aresample=48000,asplit=2[v][vk];"
-      "[1:a]volume=-13dB[m];"
-      "[m][vk]sidechaincompress=threshold=0.02:ratio=4:attack=30:release=350:makeup=1[md];"
-      "[2:a]volume=-4dB[s];"
-      "[v][md][s]amix=inputs=3:duration=first:normalize=0[out]")
+if PLANO.get("trilha", False):
+    fc = ("[0:a]aresample=48000,asplit=2[v][vk];"
+          "[1:a]volume=-13dB[m];"
+          "[m][vk]sidechaincompress=threshold=0.02:ratio=4:attack=30:release=350:makeup=1[md];"
+          "[2:a]volume=-4dB[s];"
+          "[v][md][s]amix=inputs=3:duration=first:normalize=0[out]")
+else:  # sem música de fundo: só voz + efeitos
+    fc = ("[0:a]aresample=48000[v];[1:a]volume=-140dB[m];[2:a]volume=-4dB[s];"
+          "[v][s]amix=inputs=2:duration=first:normalize=0[out];[m]anullsink")
 r = subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", os.path.join(A, "voice.wav"),
                     "-i", os.path.join(A, "music.wav"), "-i", os.path.join(A, "sfx.wav"), "-filter_complex", fc,
                     "-map", "[out]", "-ar", "48000", "-c:a", "pcm_f32le", os.path.join(A, "mix_pre.wav")],
@@ -67,4 +72,4 @@ for _ in range(3):
     got = lufs(out)
     if abs(got + 14.0) <= 0.3: break
     g += -14.0 - got
-print(f"mixagem: {got} LUFS (ganho {g:.1f} dB), {DUR:.2f} s")
+print(f"mixagem: {got} LUFS (ganho {g:.1f} dB), {DUR:.2f} s, trilha {'ligada' if PLANO.get('trilha') else 'desligada'}")

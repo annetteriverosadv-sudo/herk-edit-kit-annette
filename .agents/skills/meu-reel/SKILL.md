@@ -1,6 +1,6 @@
 ---
 name: meu-reel
-description: Edita uma gravação da Dra. Annette Riveros (Riveros Advocacia) em Reel 9:16 no estilo dela — legenda palavra por palavra, film burn singelo, batida leve. Use em todo vídeo novo dela para o Instagram.
+description: Edita uma gravação da Dra. Annette Riveros (Riveros Advocacia) em Reel 9:16 no estilo dela — legenda palavra por palavra, film burn singelo, sem música de fundo. Use em todo vídeo novo dela para o Instagram.
 ---
 
 # Meu reel — Riveros Advocacia
@@ -39,7 +39,8 @@ Ela não programa: antes de cada passo, diga em **uma frase simples** o que vai 
    Confira uma folha de contato: olhos na mesma altura em todos os trechos.
 7. **Legenda e animações.** `python3 scripts/gen_comp.py`, depois `npx hyperframes lint` (0 erros).
    Legenda palavra por palavra: Montserrat, letras normais, caixa bordô na palavra falada.
-8. **Som.** `python3 scripts/make_audio.py` (batida leve, transições, toques; mixagem a −14 LUFS).
+8. **Som.** `python3 scripts/make_audio.py` (voz + transições e toques, **sem música de fundo**; mixagem a −14 LUFS).
+   Trilha só se ela pedir naquele vídeo: `"trilha": true` no plano.
 9. **Rascunho antes de polir.** `npx hyperframes render --quality draft --output renders/rascunho-v1.mp4`.
    Confira quadros-chave, envie e **espere a aprovação** dela.
 10. **Polir.** `--quality high`. Meça o volume no arquivo final (−14 LUFS), confira o film burn e o último quadro,
@@ -52,7 +53,7 @@ Ela não programa: antes de cada passo, diga em **uma frase simples** o que vai 
 | Elemento | Onde | Quando usar |
 | --- | --- | --- |
 | Fontes Montserrat (600/700/800) e Playfair Display itálico | [elementos/fontes](elementos/fontes) | Sempre: Montserrat na legenda, cartões e gancho; Playfair na palavra grande dos títulos e na 2ª linha do gancho |
-| Batida leve (trilha) | [sons.py](elementos/audio/sons.py) `trilha()` | Sempre, do começo ao fim, 18–22 dB abaixo da voz (o `make_audio.py` já faz) |
+| Batida leve (trilha) | [sons.py](elementos/audio/sons.py) `trilha()` | **Desligada por padrão** (ela tirou: "ficou com ruído"). Só se ela pedir num vídeo: `"trilha": true` no plano |
 | Som de transição (sopro + tom) | `sons.py` `sopro()` + `tom()` | Só nas trocas de assunto, junto com o film burn. Sempre baixo |
 | Toque abafado | `sons.py` `toque()` | Quando entra a palavra grande de um título |
 | Cliques secos | `sons.py` `clique()` | Um por item de lista, alternando o tom |
@@ -66,7 +67,7 @@ Para ouvir os sons soltos (ou usar no CapCut): `python3 elementos/audio/sons.py 
 ## Correções feitas no reel do auxílio-acidente (04/11/2026)
 
 - Sem cartão final de comentários: o vídeo termina na última fala dela.
-- Trilha: batida leve e discreta (não piano).
+- Trilha: primeiro trocada para batida leve (não piano); depois **retirada** — o reel fica sem música de fundo.
 - Legenda menor e suave: Montserrat SemiBold, ~58 px, letras normais, só sombra — nada de fonte condensada em caixa alta com contorno.
 - Nada de selo de tema em cima da cabeça ("AUXÍLIO-ACIDENTE" no topo saiu).
 - Transição: film burn singelo nas trocas de assunto, no lugar do flash bege.

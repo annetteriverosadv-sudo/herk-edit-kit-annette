@@ -84,14 +84,13 @@ salvo pedido diferente da Dra. Annette na hora.
 
 ## Música e som
 
-- Trilha instrumental, sem letra, discreta, tocando do começo ao fim (todas as referências têm "cama" contínua). Pode subir um pouco no gancho e no final.
-- Estilo preferido: **batida leve e discreta** (em vez de piano suave) — escolha de 04/11/2026.
-- Trilha 18–22 dB abaixo da voz, com abaixamento automático (ducking) quando ela fala.
+- **Sem música de fundo** (correção de 04/11/2026: a trilha "ficou com ruído e estragou o áudio"). O som é a voz dela, limpa, mais os efeitos suaves.
+- Trilha só se ela pedir num vídeo específico: aí batida leve e discreta, 18–22 dB abaixo da voz, com abaixamento automático quando ela fala.
 - Voz isolada e limpa, sempre na frente.
 - Efeitos sutis: "pop" no título grande, som de teclado na lista digitada.
 - **Som da transição:** mistura de dois sons (sopro suave + tom delicado e harmônico), bem baixo, nunca um whoosh seco/grosso (correção de 04/11/2026).
 - Entrega a **−14 LUFS**, pico ≤ −1 dBTP. As referências variaram de −8 a −28 LUFS; padronizar.
-- Trilha padrão: a batida original da skill (`elementos/audio/sons.py`). Outra música só de biblioteca licenciada (CapCut ou Instagram). Nunca copiar a faixa das referências nem usar as músicas de exemplo do kit.
+- Se ela pedir trilha: a batida original da skill (`elementos/audio/sons.py`) ou música de biblioteca licenciada (CapCut ou Instagram). Nunca copiar a faixa das referências nem usar as músicas de exemplo do kit.
 
 ## Encerramento (últimos 3–5 s)
 
@@ -122,3 +121,4 @@ Limitação: não foi possível ouvir as trilhas para dizer gênero ou batida. S
 - 2026-11-04 — Tirar o rótulo "AUXÍLIO-ACIDENTE" em cima da cabeça: nada de selo de tema no topo.
 - 2026-11-04 — Transição: film burn singelo nas trocas de assunto (como nas referências), no lugar do flash bege.
 - 2026-11-04 — Som da transição estava grosseiro: mistura de dois sons mais harmônica e bem mais baixa.
+- 2026-11-04 — Música de fundo retirada ("ficou com ruído e estragou o áudio"): reel sem trilha; só voz + efeitos suaves. Substitui a escolha da batida leve.
