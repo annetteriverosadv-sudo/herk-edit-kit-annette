@@ -46,11 +46,17 @@ for a, b in RANGES:
     covered.update(range(a, b + 1))
 
 # ---- caption groups: 2-4 words, break on punctuation / pauses / graphics ----
+DEST = set()
+for a_, b_ in PLANO.get("destaques", []):
+    DEST.update(range(p(a_), p(b_) + 1))
+DEST_RANGES = {p(a_): p(b_) for a_, b_ in PLANO.get("destaques", [])}
 groups, cur = [], []
 for i, w in enumerate(W):
     if i in covered:
         if cur: groups.append(cur); cur = []
         continue
+    if cur and i in DEST_RANGES and len(cur) + DEST_RANGES[i] - i + 1 > 4:  # palavra-chave não se divide
+        groups.append(cur); cur = []
     if cur and (w["start"] - W[cur[-1]]["end"] > 0.35 or len(cur) >= 4
                 or sum(len(W[j]["text"]) for j in cur) + len(w["text"]) > 24):
         groups.append(cur); cur = []
@@ -107,13 +113,17 @@ for k, (g, (st, en)) in enumerate(zip(groups, gtimes)):
     cap_html.append(f'<div class="cg" id="cg{k}">{spans.strip()}</div>')
     cap_js.append(f"tl.set('#cg{k}',{{opacity:1,visibility:'visible'}},{st});")
     for n, i in enumerate(g):
+        if i in DEST:  # palavra-chave: caixa bordô durante o bloco inteiro
+            cap_js.append(f"tl.set('#w{i}',{{backgroundColor:'{BORDO}'}},{st:.3f});")
+            continue
         ws = max(st, t(i))
         we = t(g[n + 1]) if n + 1 < len(g) else en
         cap_js.append(f"tl.set('#w{i}',{{backgroundColor:'{BORDO}'}},{ws:.3f});")
         cap_js.append(f"tl.set('#w{i}',{{backgroundColor:'rgba(142,28,36,0)'}},{we:.3f});")
     cap_js.append(f"tl.set('#cg{k}',{{opacity:0,visibility:'hidden'}},{en});")
 
-burns = [c["out_in"] for k, c in enumerate(EDL["clips"]) if k and c["block"] != EDL["clips"][k - 1]["block"]]
+burns = [c["out_in"] for c in EDL["clips"] if c.get("burn")]
+ZOOMS = [(c["out_in"], c["out_out"]) for c in EDL["clips"] if c.get("zoom")]
 json.dump(dict(burns=burns), open(caminho("assets", "transitions.json"), "w"))
 
 
@@ -134,7 +144,7 @@ css = f"""
 *{{box-sizing:border-box}}
 html,body{{margin:0;width:1080px;height:1920px;overflow:hidden;background:{PRETO}}}
 #reel{{position:relative;width:1080px;height:1920px;overflow:hidden;background:{PRETO}}}
-#vwrap{{position:absolute;inset:0}}
+#vwrap{{position:absolute;inset:0;transform-origin:540px 538px}}
 #vwrap video{{width:1080px;height:1920px;object-fit:cover;display:block}}
 /* film burn */
 .burn{{position:absolute;inset:0;z-index:20;opacity:0;pointer-events:none;overflow:hidden}}
@@ -142,19 +152,32 @@ html,body{{margin:0;width:1080px;height:1920px;overflow:hidden;background:{PRETO
   background:radial-gradient(ellipse 55% 48% at 10% 42%,rgba(255,196,128,.85),rgba(226,104,52,.45) 42%,rgba(160,40,36,0) 75%),
              radial-gradient(ellipse 38% 55% at 96% 72%,rgba(255,224,180,.55),rgba(198,60,40,.25) 50%,rgba(142,28,36,0) 80%)}}
 /* hook */
-#hook{{position:absolute;left:70px;right:70px;top:1060px;text-align:center;z-index:12}}
-#hook .h1{{font-family:'Montserrat';font-weight:700;font-size:60px;line-height:1.15;color:#fff;
+#hook{{position:absolute;left:70px;right:70px;top:790px;text-align:center;z-index:12}}
+#hook .h1{{font-family:'Montserrat';font-weight:800;font-size:72px;line-height:1.15;color:#fff;
   text-shadow:{HALO}}}
-#hook .h2{{font-family:'Playfair Display';font-style:italic;font-weight:800;font-size:92px;line-height:1.05;
-  color:#fff;margin-top:8px;text-shadow:{HALO}}}
+#hook .h3{{font-family:'Montserrat';font-weight:700;font-size:66px;line-height:1.3;color:#fff;margin-top:6px;
+  text-shadow:{HALO}}}
+#hook .h2{{font-family:'Playfair Display';font-style:italic;font-weight:800;font-size:124px;line-height:1.0;
+  color:#fff;margin-top:2px;text-shadow:{HALO}}}
+/* lista digitada */
+.typed{{position:absolute;left:80px;right:60px;top:1080px;z-index:12}}
+.typed .ti{{font-family:'Montserrat';font-weight:800;font-size:60px;line-height:1.25;color:#fff;white-space:pre;
+  border-left:10px solid {BORDO};padding:4px 0 4px 26px;margin-bottom:26px;text-shadow:{HALO}}}
+.typed .ch,.typed .cur{{display:none}}
+.typed .cur{{color:#fff;font-weight:600;margin-left:2px}}
+/* light leak (só na palavra de impacto) */
+.leak{{position:absolute;inset:0;z-index:11;opacity:0;pointer-events:none;overflow:hidden}}
+.leak .li{{position:absolute;inset:-15%;
+  background:radial-gradient(ellipse 50% 60% at 100% 35%,rgba(198,40,40,.85),rgba(198,40,40,.35) 40%,rgba(198,40,40,0) 70%),
+             radial-gradient(ellipse 45% 45% at 85% 70%,rgba(255,178,92,.6),rgba(255,150,70,.2) 45%,rgba(255,150,70,0) 75%)}}
 /* captions */
 #caps{{position:absolute;left:90px;right:90px;top:1190px;height:200px;z-index:10}}
 .cg{{position:absolute;left:0;right:0;top:0;text-align:center;opacity:0;visibility:hidden;
-  font-family:'Montserrat';font-weight:600;font-size:58px;line-height:1.3;color:#fff;word-spacing:-10px}}
+  font-family:'Montserrat';font-weight:700;font-size:58px;line-height:1.3;color:#fff;word-spacing:-10px}}
 .w{{display:inline-block;padding:0 9px 2px;border-radius:10px;background:rgba(142,28,36,0);text-shadow:{HALO}}}
 /* emphasis title */
 {T_IDS}{{position:absolute;left:70px;right:70px;top:1090px;text-align:center;z-index:12}}
-{T_SMALL}{{font-family:'Montserrat';font-weight:600;font-size:56px;color:#fff;text-shadow:{HALO}}}
+{T_SMALL}{{font-family:'Montserrat';font-weight:700;font-size:56px;color:#fff;text-shadow:{HALO}}}
 {T_BIG}{{font-family:'Playfair Display';font-style:italic;font-weight:800;font-size:116px;line-height:1.0;color:#fff;
   text-shadow:{HALO}}}
 /* list cards */
@@ -170,15 +193,26 @@ html,body{{margin:0;width:1080px;height:1920px;overflow:hidden;background:{PRETO
 hook_html = ""
 if G:
     hook_end = fim_de(HOOK[1]) - 0.03
-    linhas = "".join(f'<div class="{"h2" if l.get("estilo") == "serifa" else "h1"}" id="hq{n + 1}">{esc(l["texto"])}</div>'
+    linhas = "".join(f'<div class="{ {"serifa": "h2", "fina": "h3"}.get(l.get("estilo"), "h1") }" id="hq{n + 1}">{esc(l["texto"])}</div>'
                      for n, l in enumerate(G["linhas"]))
     hook_html = f'<div id="hook" class="clip" data-start="0" data-duration="{round(hook_end, 3)}" data-track-index="4">{linhas}</div>'
 tit_html = "".join(
     f'<div id="t{n + 1}" class="clip" data-start="{round(t(x["a"]) - 0.05, 3)}" data-duration="{round(fim_de(x["b"]) - round(t(x["a"]) - 0.05, 3), 3)}" data-track-index="{6 if n == 0 else 19 + n}">'
     f'<div class="small" id="t{n + 1}a">{esc(x["pequeno"])}</div><div class="big" id="t{n + 1}b">{esc(x["grande"])}</div></div>'
     for n, x in enumerate(TITULOS))
+LEAKS = [round(t(p(x.get("grande_em", x["ate"]))) - 0.12, 3) for x in TITULOS if x.get("leak")]
+leak_html = "".join(f'<div id="lk{n}" class="leak clip" data-start="{lt}" data-duration="0.9" data-track-index="{15 + n}"><div class="li"></div></div>'
+                    for n, lt in enumerate(LEAKS))
 lis_html = ""
 for n, x in enumerate(LISTAS):
+    if x.get("estilo") == "digitada":
+        ls, le = round(t(x["a"]) - 0.05, 3), fim_de(x["b"])
+        its = ""
+        for m, (txt, _) in enumerate(x["itens"]):
+            chs = "".join(f'<span class="ch" id="l{n + 1}i{m}c{k}">{esc(ch)}</span>' for k, ch in enumerate(txt))
+            its += f'<div class="ti" id="l{n + 1}i{m}">{chs}<span class="cur" id="l{n + 1}i{m}k">▌</span></div>'
+        lis_html += f'<div id="l{n + 1}" class="typed clip" data-start="{ls}" data-duration="{round(le - ls, 3)}" data-track-index="{7 + n}">{its}</div>'
+        continue
     ls, le = round(t(x["a"]) - 0.05, 3), fim_de(x["b"])
     foot = f'<div class="foot" id="l{n + 1}f">{esc(x["rodape"][0])}</div>' if x.get("rodape") else ""
     lis_html += (f'<div id="l{n + 1}" class="card clip" data-start="{ls}" data-duration="{round(le - ls, 3)}" data-track-index="{7 + n}">'
@@ -192,6 +226,7 @@ body = f"""
  {hook_html}
  <div id="caps" class="clip" data-start="0" data-duration="{VID}" data-track-index="5">{''.join(cap_html)}</div>
  {tit_html}
+ {leak_html}
  {lis_html}
 </div>
 """
@@ -203,18 +238,39 @@ for n, bt in enumerate(burns):
     js.append(f"tl.fromTo('#fb{n}',{{opacity:0}},{{opacity:0.85,duration:0.28,ease:'sine.in'}},{s0});")
     js.append(f"tl.fromTo('#fb{n}',{{opacity:0.85}},{{opacity:0,duration:0.32,ease:'sine.out',immediateRender:false}},{s0 + 0.29:.3f});")
     js.append(f"tl.fromTo('#fb{n} .bi',{{x:-140,scale:1.05}},{{x:90,scale:1.18,duration:0.62,ease:'none'}},{s0});")
+for n, lt in enumerate(LEAKS):
+    js.append(f"tl.fromTo('#lk{n}',{{opacity:0}},{{opacity:0.8,duration:0.3,ease:'sine.out'}},{lt});")
+    js.append(f"tl.to('#lk{n}',{{opacity:0,duration:0.5,ease:'sine.in'}},{lt + 0.38:.3f});")
+    js.append(f"tl.fromTo('#lk{n} .li',{{x:120}},{{x:-60,duration:0.9,ease:'none'}},{lt});")
+for a_, b_ in ZOOMS:  # aproximação suave (punch-in) pedida no plano
+    js.append(f"tl.fromTo('#vwrap',{{scale:1}},{{scale:1.12,duration:0.4,ease:'power2.out',immediateRender:false}},{a_:.3f});")
+    js.append(f"tl.set('#vwrap',{{scale:1}},{b_:.3f});")
 if G:
     for n, l in enumerate(G["linhas"]):
         em = p(l["em"])
-        if n == 0:
-            js.append(f"tl.from('#hq1',{ghost},{max(0.05, t(em) - 0.05):.3f});")
-        else:
-            js.append(f"tl.from('#hq{n + 1}',{{opacity:0,y:24,filter:'blur(12px)',duration:0.24,ease:'expo.out'}},{t(em) - 0.05:.3f});")
+        js.append(f"tl.from('#hq{n + 1}',{ghost},{max(0.05, t(em) - 0.05):.3f});")
 for n, x in enumerate(TITULOS):
     js.append(f"tl.from('#t{n + 1}a',{{opacity:0,y:18,duration:0.2,ease:'power2.out'}},{round(t(x['a']) - 0.05, 3)});")
     js.append(f"tl.from('#t{n + 1}b',{{opacity:0,scale:1.3,filter:'blur(18px)',duration:0.26,ease:'expo.out'}},{t(p(x.get('grande_em', x['ate']))) - 0.05:.3f});")
 for n, x in enumerate(LISTAS):
     ls, le = round(t(x["a"]) - 0.05, 3), fim_de(x["b"])
+    if x.get("estilo") == "digitada":
+        starts = [t(p(it[1])) - 0.04 for it in x["itens"]]
+        for m, (txt, _) in enumerate(x["itens"]):
+            t0 = starts[m]; dt = min(0.035, 0.85 / max(1, len(txt)))
+            js.append(f"tl.set('#l{n + 1}i{m}k',{{display:'inline'}},{t0:.3f});")
+            for k in range(len(txt)):
+                js.append(f"tl.set('#l{n + 1}i{m}c{k}',{{display:'inline'}},{t0 + k * dt:.3f});")
+            if m + 1 < len(starts):
+                js.append(f"tl.set('#l{n + 1}i{m}k',{{display:'none'}},{starts[m + 1]:.3f});")
+            else:  # cursor do último item pisca até a lista sair
+                tb, on = t0 + len(txt) * dt + 0.45, False
+                while tb < le - 0.2:
+                    js.append(f"tl.set('#l{n + 1}i{m}k',{{opacity:{1 if on else 0}}},{tb:.3f});"); on = not on; tb += 0.45
+        js.append(f"tl.from('#l{n + 1}',{{opacity:0,duration:0.15}},{ls});")
+        if le < VID:
+            js.append(f"tl.to('#l{n + 1}',{{opacity:0,duration:0.15,ease:'power1.in'}},{le - 0.15:.3f});")
+        continue
     js.append(f"tl.from('#l{n + 1}',{{opacity:0,x:-60,duration:0.28,ease:'power3.out'}},{ls});")
     for m, it in enumerate(x["itens"]):
         i = p(it[1])

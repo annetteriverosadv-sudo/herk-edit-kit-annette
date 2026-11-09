@@ -109,8 +109,9 @@ class Sons:
         return (np.sin(2 * np.pi * freq * t) * 0.6 + 0.4 * self.lp(self.rng.standard_normal(len(t)), 4000)) * np.exp(-t * 80)
 
 
-# Níveis aprovados (04/11/2026) — mantenha baixos.
-NIVEL_SOPRO, NIVEL_TOM, NIVEL_TOQUE, NIVEL_CLIQUE = 0.13, 0.07, 0.45, 0.22
+# Níveis (04/11/2026, ajustados em 09/11/2026) — mantenha baixos.
+# 2026-11-09: transição baixada ~8 dB ("achei muito alto"); toque e cliques ~3 dB.
+NIVEL_SOPRO, NIVEL_TOM, NIVEL_TOQUE, NIVEL_CLIQUE = 0.05, 0.03, 0.32, 0.16
 FREQ_CLIQUES = [1450, 1300, 1550, 1380]
 
 

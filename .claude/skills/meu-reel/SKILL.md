@@ -38,12 +38,14 @@ Ela não programa: antes de cada passo, diga em **uma frase simples** o que vai 
 6. **Cortar.** `python3 scripts/edl.py` e `python3 scripts/render_cut.py` (usa os originais 4K, limpa a voz).
    Confira uma folha de contato: olhos na mesma altura em todos os trechos.
 7. **Legenda e animações.** `python3 scripts/gen_comp.py`, depois `npx hyperframes lint` (0 erros).
-   Legenda palavra por palavra: Montserrat, letras normais, caixa bordô na palavra falada.
-8. **Som.** `python3 scripts/make_audio.py` (voz + transições e toques, **sem música de fundo**; mixagem a −14 LUFS).
+   Legenda palavra por palavra: Montserrat Bold (700), letras normais, caixa bordô na palavra falada.
+   Recursos do plano (ver `_novidades_2026_11_09` no plano de exemplo): aproximações suaves, planos à mão,
+   lista digitada, destaques em bordô, light leak, correção de luz por gravação.
+8. **Som.** `python3 scripts/make_audio.py` (voz + transições e toques, **sem música de fundo**; mixagem a −12 LUFS).
    Trilha só se ela pedir naquele vídeo: `"trilha": true` no plano.
 9. **Rascunho antes de polir.** `npx hyperframes render --quality draft --output renders/rascunho-v1.mp4`.
    Confira quadros-chave, envie e **espere a aprovação** dela.
-10. **Polir.** `--quality high`. Meça o volume no arquivo final (−14 LUFS), confira o film burn e o último quadro,
+10. **Polir.** `--quality high`. Meça o volume no arquivo final (−12 LUFS), confira o film burn e o último quadro,
     registre em `VERIFY.md` e envie. Diga sempre que o som foi conferido só por medição.
 11. **Correções.** Toda correção dela vira regra nova, com data, na seção "Correções" do [DESIGN.md](DESIGN.md)
     (e a regra antiga é ajustada). Se for sobre o processo, ajuste esta skill também.
@@ -73,10 +75,21 @@ Para ouvir os sons soltos (ou usar no CapCut): `python3 elementos/audio/sons.py 
 - Transição: film burn singelo nas trocas de assunto, no lugar do flash bege.
 - Som da transição: dois sons misturados (sopro + tom), harmônico e bem mais baixo.
 
+## Correções feitas no reel do fim da escala 6x1 (09/11/2026)
+
+- Letras mais grossas (Montserrat 700 na legenda e nas linhas pequenas).
+- Voz mais alta (−12 LUFS) e limpa: zumbido de motor/ar-condicionado tirado com filtros estreitos, eco encurtado
+  com expansor suave. Para achar o zumbido, meça o espectro de uma pausa da gravação original.
+- Som da transição ~8 dB mais baixo.
+- Antes de cortar, confira se todos os arquivos são as gravações certas: compare a transcrição com o roteiro e
+  avise logo se faltar trecho (no 6x1, uma gravação errada veio no lugar da terceira parte).
+
 ## Armadilhas técnicas (já custaram tempo)
 
 - `mix-blend-mode` não funciona sobre o vídeo no render (o vídeo é composto à parte): use camada com transparência normal.
 - O `hyperframes snapshot` não mostra fades pela metade; confira efeitos curtos no vídeo renderizado.
 - Meça o volume em **estéreo**: mixagem medida em mono sai 3 dB mais alta no vídeo final.
+- O zoom suave anima o `#vwrap` (transform-origin nos olhos, 540px 538px) e funciona no render.
+- Depois de tratar a voz, transcreva de novo com o Whisper: se aparecerem palavras erradas que antes saíam certas, o tratamento está forte demais.
 - Não use as músicas de exemplo do kit (licença incerta); a trilha da skill é original.
 - Para baixar o modelo do Whisper, a rede precisa liberar `huggingface.co` e `*.hf.co`.

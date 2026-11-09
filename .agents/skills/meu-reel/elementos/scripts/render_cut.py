@@ -16,6 +16,7 @@ TMP = os.path.join(ROOT, "assets", "clips")
 RNN = os.environ.get("RNNOISE_MODEL") or os.path.expanduser("~/tools/models/sh.rnnn")
 os.makedirs(TMP, exist_ok=True)
 edl = json.load(open(os.path.join(ROOT, "assets", "edl.json")))
+COR = json.load(open(os.path.join(ROOT, "assets", "plano.json"))).get("cor", {})
 
 
 
@@ -50,7 +51,10 @@ def clip_job(k_c):
     SW, SH = _size(_orig(c["take"]))
     w, h = round(cr["w"] * SW / 2) * 2, round(cr["w"] * SH / 2) * 2
     x, y = round(cr["x"] * SW), round(cr["y"] * SH)
-    vf = (f"crop={w}:{h}:{x}:{y},scale=1080:1920:flags=lanczos,fps=30,setsar=1,"
+    g = COR.get(c["take"], 1.0)  # correção de exposição/balanço de branco por gravação (sem filtro de estilo)
+    vf = (f"crop={w}:{h}:{x}:{y},scale=1080:1920:flags=lanczos,"
+          f"colorchannelmixer=rr={0.98 * g:.3f}:gg={g:.3f}:bb={1.035 * g:.3f},"
+          "eq=contrast=1.03:saturation=1.02,unsharp=5:5:0.35:5:5:0,fps=30,setsar=1,"
           f"trim=end_frame={nfr},setpts=PTS-STARTPTS")
     af = (f"aresample=48000,apad,atrim=end={dur:.6f},asetpts=PTS-STARTPTS,"
           f"afade=t=in:d=0.012,afade=t=out:st={max(0, dur - 0.012):.3f}:d=0.012")
@@ -70,13 +74,19 @@ open(lst, "w").write("".join(f"file '{o}'\n" for o in outs))
 raw = os.path.join(ROOT, "assets", "cut_raw.mov")
 run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", lst, "-c", "copy", raw])
 
-rnn = f"arnndn=m='{RNN}':mix=0.85," if os.path.exists(RNN) else ""
+rnn = f"arnndn=m='{RNN}':mix=1," if os.path.exists(RNN) else ""
 if not rnn: print("AVISO: modelo RNNoise não encontrado; voz tratada só com redução espectral.")
-voice = ("highpass=f=80,lowpass=f=14000,"
-         f"{rnn}afftdn=nf=-42,"
-         "equalizer=f=200:t=q:w=1:g=-2,equalizer=f=3500:t=q:w=1.2:g=3,"
-         "deesser=i=0.3,acompressor=threshold=-22dB:ratio=3:attack=8:release=120:makeup=3,"
-         "loudnorm=I=-16:TP=-1.5:LRA=7")
+# Correção 2026-11-09 ("parece que está dentro de um banheiro"): tira o zumbido de motor/ar-condicionado
+# (~57/112 Hz e harmônicos), RNNoise cheio, redução espectral, expansor suave que encurta o eco entre
+# as palavras, corte da caixa (300 Hz), presença (3,2 kHz) e compressão para a voz ficar na frente.
+voice = ("highpass=f=90:poles=2,equalizer=f=57:t=h:w=5:g=-30,equalizer=f=112.5:t=h:w=6:g=-30,"
+         "equalizer=f=169:t=h:w=6:g=-20,equalizer=f=225:t=h:w=6:g=-15,"
+         f"{rnn}afftdn=nr=12:nf=-50:tn=1,loudnorm=I=-20:TP=-3:LRA=11:linear=true,"
+         "agate=threshold=0.025:ratio=2.5:range=0.18:attack=4:release=80:knee=4,"
+         "equalizer=f=300:t=q:w=1.2:g=-4,equalizer=f=600:t=q:w=1.5:g=-1.5,"
+         "equalizer=f=3200:t=q:w=1.2:g=3.5,equalizer=f=8500:t=q:w=1:g=1.5,deesser=i=0.35,"
+         "acompressor=threshold=-24dB:ratio=3.5:attack=6:release=110:makeup=3,"
+         "loudnorm=I=-16:TP=-1.5:LRA=6")
 run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", raw, "-vn", "-af", voice, "-ar", "48000",
      "-c:a", "pcm_s16le", os.path.join(ROOT, "assets", "voice.wav")])
 run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", raw, "-i", os.path.join(ROOT, "assets", "voice.wav"),

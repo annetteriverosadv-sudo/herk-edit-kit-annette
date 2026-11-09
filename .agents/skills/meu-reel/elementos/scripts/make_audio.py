@@ -44,7 +44,7 @@ if PLANO.get("trilha", False):
     fc = ("[0:a]aresample=48000,asplit=2[v][vk];"
           "[1:a]volume=-13dB[m];"
           "[m][vk]sidechaincompress=threshold=0.02:ratio=4:attack=30:release=350:makeup=1[md];"
-          "[2:a]volume=-4dB[s];"
+          "[2:a]volume=-6dB[s];"
           "[v][md][s]amix=inputs=3:duration=first:normalize=0[out]")
 else:  # sem música de fundo: só voz + efeitos
     fc = ("[0:a]aresample=48000[v];[1:a]volume=-140dB[m];[2:a]volume=-4dB[s];"
@@ -63,13 +63,14 @@ def lufs(path):
 
 
 pre, out = os.path.join(A, "mix_pre.wav"), os.path.join(A, "mix.wav")
-g = -14.0 - lufs(pre)
+ALVO = float(PLANO.get("lufs", -12.0))  # 2026-11-09: voz mais alta (era -14)
+g = ALVO - lufs(pre)
 for _ in range(3):
     r = subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", pre, "-af",
-                        f"volume={g:.2f}dB,alimiter=limit=0.76:attack=1:release=60:level=false",
+                        f"volume={g:.2f}dB,alimiter=limit=0.85:attack=1:release=60:level=false",
                         "-ar", "48000", "-ac", "2", "-c:a", "pcm_s16le", out], capture_output=True, text=True)
     if r.returncode: sys.exit(r.stderr)
     got = lufs(out)
-    if abs(got + 14.0) <= 0.3: break
-    g += -14.0 - got
+    if abs(got - ALVO) <= 0.3: break
+    g += ALVO - got
 print(f"mixagem: {got} LUFS (ganho {g:.1f} dB), {DUR:.2f} s, trilha {'ligada' if PLANO.get('trilha') else 'desligada'}")

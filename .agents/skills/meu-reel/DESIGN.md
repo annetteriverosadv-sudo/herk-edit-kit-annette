@@ -34,7 +34,7 @@ salvo pedido diferente da Dra. Annette na hora.
 ## Legendas
 
 - 2 a 4 palavras por bloco, em 1 ou 2 linhas, centralizadas.
-- Fonte **suave**: Montserrat SemiBold (600), em letras normais (sem CAIXA ALTA), branca, só com sombra suave — sem contorno preto grosso e sem fonte condensada pesada (correção de 04/11/2026).
+- Fonte Montserrat **Bold (700)** — mais grossa que a SemiBold (correção de 09/11/2026) —, em letras normais (sem CAIXA ALTA), branca, só com sombra suave — sem contorno preto grosso e sem fonte condensada pesada (correção de 04/11/2026).
 - Tamanho: ~3% da altura do quadro (≈ 58 px em 1080×1920).
 - Posição: bloco entre **62% e 72% da altura** (cintura). Nunca sobre o rosto e nunca abaixo de 75%, por causa da interface do Instagram.
 - **Palavra falada destacada (karaokê):** a palavra do momento ganha uma caixa bordô com cantos arredondados e texto branco. Em fundo escuro ou bordô, a caixa vira bege com texto bordô.
@@ -84,12 +84,13 @@ salvo pedido diferente da Dra. Annette na hora.
 
 ## Música e som
 
-- **Sem música de fundo** (correção de 04/11/2026: a trilha "ficou com ruído e estragou o áudio"). O som é a voz dela, limpa, mais os efeitos suaves.
+- **Sem música de fundo** (correção de 04/11/2026: a trilha "ficou com ruído e estragou o áudio"). O som é a voz, limpa, mais os efeitos suaves.
+- **Voz alta e seca** (correção de 09/11/2026: "parece que está dentro de um banheiro"): tirar zumbido de motor/ar-condicionado (filtros estreitos nas frequências do zumbido, ex. 57/112 Hz), RNNoise cheio, redução espectral, expansor suave para encurtar o eco entre palavras, corte em 300 Hz e presença em 3,2 kHz. Conferir com o Whisper que nenhuma palavra foi "comida" pelo tratamento.
 - Trilha só se ela pedir num vídeo específico: aí batida leve e discreta, 18–22 dB abaixo da voz, com abaixamento automático quando ela fala.
 - Voz isolada e limpa, sempre na frente.
 - Efeitos sutis: "pop" no título grande, som de teclado na lista digitada.
-- **Som da transição:** mistura de dois sons (sopro suave + tom delicado e harmônico), bem baixo, nunca um whoosh seco/grosso (correção de 04/11/2026).
-- Entrega a **−14 LUFS**, pico ≤ −1 dBTP. As referências variaram de −8 a −28 LUFS; padronizar.
+- **Som da transição:** mistura de dois sons (sopro suave + tom delicado e harmônico), **bem baixo — cerca de 27 dB abaixo do pico da voz** (correção de 09/11/2026: "achei muito alto"), nunca um whoosh seco/grosso (correção de 04/11/2026).
+- Entrega a **−12 LUFS** (voz mais alta — correção de 09/11/2026; antes −14), pico ≤ −1 dBTP. As referências variaram de −8 a −28 LUFS; padronizar.
 - Se ela pedir trilha: a batida original da skill (`elementos/audio/sons.py`) ou música de biblioteca licenciada (CapCut ou Instagram). Nunca copiar a faixa das referências nem usar as músicas de exemplo do kit.
 
 ## Encerramento (últimos 3–5 s)
@@ -122,3 +123,7 @@ Limitação: não foi possível ouvir as trilhas para dizer gênero ou batida. S
 - 2026-11-04 — Transição: film burn singelo nas trocas de assunto (como nas referências), no lugar do flash bege.
 - 2026-11-04 — Som da transição estava grosseiro: mistura de dois sons mais harmônica e bem mais baixa.
 - 2026-11-04 — Música de fundo retirada ("ficou com ruído e estragou o áudio"): reel sem trilha; só voz + efeitos suaves. Substitui a escolha da batida leve.
+- 2026-11-09 — Letras mais grossas: legenda e linhas pequenas dos títulos passam de Montserrat 600 para 700 (lista digitada em 800).
+- 2026-11-09 — Áudio "dentro de um banheiro": voz tratada contra zumbido (motor ~57/112 Hz), ruído e eco (expansor suave); a cadeia nova está no render_cut.py.
+- 2026-11-09 — Voz mais alta: entrega a −12 LUFS (era −14), limitador a −1,4 dBFS.
+- 2026-11-09 — Som da transição estava alto: sopro e tom baixados ~8 dB (≈ 27 dB abaixo da voz); toque e cliques ~3 dB; efeitos entram −6 dB na mixagem.

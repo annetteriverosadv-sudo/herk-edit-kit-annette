@@ -14,7 +14,7 @@ from plano import ROOT, caminho, carregar, palavra
 WORK = caminho("source", "work")
 TR = caminho("transcripts")
 PRE, POST, MIN_GAP = 0.08, 0.14, 0.30
-FACE_TARGET, EYE_TARGET = 0.205, 0.28
+FACE_TARGET, EYE_TARGET = 0.175, 0.28  # rosto 17,5% (aberto) a ~19% (fechado)
 FACES = json.load(open(caminho("assets", "faces.json")))
 PLANO = carregar()
 
@@ -82,11 +82,15 @@ def crop_for(take, punch):
 takes = sorted({b["take"] for b in PLANO["blocos"]})
 runs = {t: voiced_runs(t) for t in takes}
 words = {t: load_words(t, runs[t]) for t in takes}
-blocks = [(b["take"], palavra(words[b["take"]], b["de"]), palavra(words[b["take"]], b["ate"]), b["nome"], False)
+blocks = [(b["take"], palavra(words[b["take"]], b["de"]), palavra(words[b["take"]], b["ate"]), b["nome"], b.get("burn", True), b.get("plano"))
           for b in PLANO["blocos"]]
+# aproximações suaves pedidas: (take, índice da palavra) -> o trecho que começa nela ganha zoom animado na composição
+ZOOM = {(z["take"], palavra(words[z["take"]], z["em"])) for z in PLANO.get("aproximacoes", [])}
+# planos escolhidos à mão: (take, índice da 1ª palavra do trecho) -> 1.0 (aberto) ou 1.1 (fechado)
+PLANOS = {(z["take"], palavra(words[z["take"]], z["em"])): z["plano"] for z in PLANO.get("planos", [])}
 
 clips, out_words, t_out, punch = [], [], 0.0, 1.0
-for bi, (take, a, b, label, flash) in enumerate(blocks):
+for bi, (take, a, b, label, flash, fixo) in enumerate(blocks):
     ws = words[take][a:b + 1]
     allw = words[take]
     s0, s1 = ws[0]["start"], ws[-1]["end"]
@@ -108,13 +112,21 @@ for bi, (take, a, b, label, flash) in enumerate(blocks):
     for si, (ia, ib) in enumerate(subs):
         seg_words = [w for w in ws if ia - 0.02 <= w["start"] < ib]
         # punch-in toggles when a new sentence starts (block start or after . ? !)
-        if bi == 0 and si == 0:
-            punch = 1.10
-        elif si == 0 or (clips and clips[-1]["last_text"][-1:] in ".?!"):
+        zoom = any((take, words[take].index(w)) in ZOOM for w in seg_words[:1])
+        if si == 0:
+            punch = 1.0                      # cada bloco novo volta ao plano aberto
+        elif clips and clips[-1]["last_text"][-1:] in ".?!:":
             punch = 1.0 if punch != 1.0 else 1.10
+        first = (take, words[take].index(seg_words[0])) if seg_words else None
+        if first in PLANOS:
+            punch = PLANOS[first]
+        if zoom:
+            punch = 1.10                     # conta como fechado para a alternância
+        if fixo:                             # bloco com plano fixo (ex.: encerramento em plano fechado)
+            punch, zoom = fixo, False
         clip = dict(take=take, src_in=round(ia, 3), src_out=round(ib, 3), out_in=round(t_out, 3),
-                    block=label, punch=punch, flash=bool(flash and si == 0),
-                    crop=crop_for(take, punch),
+                    block=label, punch=punch, burn=bool(flash and si == 0 and bi > 0), zoom=zoom,
+                    crop=crop_for(take, 1.0 if zoom else punch),
                     last_text=seg_words[-1]["text"] if seg_words else "")
         for w in seg_words:
             st = t_out + max(0.0, w["start"] - ia)
@@ -137,5 +149,5 @@ json.dump(dict(language_code="pt", audio_duration_secs=round(t_out, 3),
 print(f"{len(clips)} clips, {t_out:.2f}s")
 for c in clips:
     print(f"{c['out_in']:6.2f}-{c['out_out']:6.2f}  {c['take']} {c['src_in']:6.2f}-{c['src_out']:6.2f} "
-          f"punch={c['punch']} flash={c['flash']} eye={c['crop']['eye_out']} face={c['crop']['face_out']} "
+          f"punch={c['punch']} zoom={c['zoom']} burn={c['burn']} eye={c['crop']['eye_out']} face={c['crop']['face_out']} "
           f"[{c['block']}] ...{c['last_text']}")
