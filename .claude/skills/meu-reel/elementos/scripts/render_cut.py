@@ -76,18 +76,29 @@ run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-
 
 rnn = f"arnndn=m='{RNN}':mix=1," if os.path.exists(RNN) else ""
 if not rnn: print("AVISO: modelo RNNoise não encontrado; voz tratada só com redução espectral.")
-# Correção 2026-11-09 ("parece que está dentro de um banheiro"): tira o zumbido de motor/ar-condicionado
-# (~57/112 Hz e harmônicos), RNNoise cheio, redução espectral, expansor suave que encurta o eco entre
-# as palavras, corte da caixa (300 Hz), presença (3,2 kHz) e compressão para a voz ficar na frente.
-voice = ("highpass=f=90:poles=2,equalizer=f=57:t=h:w=5:g=-30,equalizer=f=112.5:t=h:w=6:g=-30,"
-         "equalizer=f=169:t=h:w=6:g=-20,equalizer=f=225:t=h:w=6:g=-15,"
-         f"{rnn}afftdn=nr=12:nf=-50:tn=1,loudnorm=I=-20:TP=-3:LRA=11:linear=true,"
-         "agate=threshold=0.025:ratio=2.5:range=0.18:attack=4:release=80:knee=4,"
-         "equalizer=f=300:t=q:w=1.2:g=-4,equalizer=f=600:t=q:w=1.5:g=-1.5,"
-         "equalizer=f=3200:t=q:w=1.2:g=3.5,equalizer=f=8500:t=q:w=1:g=1.5,deesser=i=0.35,"
-         "acompressor=threshold=-24dB:ratio=3.5:attack=6:release=110:makeup=3,"
+# Correções 2026-11-09 ("banheiro", "como microfone perto", "voz mais alta"):
+# 1) tira o zumbido de motor/ar-condicionado (~57/112 Hz e harmônicos);
+# 2) dereverb.py: WPE + supressão do rabo de reverberação (precisa de: pip install nara_wpe soundfile);
+# 3) RNNoise, expansor bem suave, "corpo" de microfone próximo (+3 dB em 170 Hz),
+#    corte da caixa (380 Hz), presença (3 kHz) e compressão.
+hum = ("highpass=f=90:poles=2,equalizer=f=57:t=h:w=5:g=-30,equalizer=f=112.5:t=h:w=6:g=-30,"
+       "equalizer=f=169:t=h:w=6:g=-20,equalizer=f=225:t=h:w=6:g=-15")
+# (sem afftdn depois do dereverb: ele "comia" o fim das palavras — ex. "jornada de trabalho")
+voice = (f"{rnn}loudnorm=I=-20:TP=-3:LRA=11:linear=true,"
+         "agate=threshold=0.012:ratio=1.8:range=0.3:attack=8:release=150:knee=6,"
+         "lowshelf=f=170:g=3,equalizer=f=380:t=q:w=1.2:g=-3.5,"
+         "equalizer=f=3000:t=q:w=1.2:g=3,equalizer=f=8500:t=q:w=1:g=1.5,deesser=i=0.35,"
+         "acompressor=threshold=-24dB:ratio=3:attack=6:release=120:makeup=3,"
          "loudnorm=I=-16:TP=-1.5:LRA=6")
-run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", raw, "-vn", "-af", voice, "-ar", "48000",
+A = os.path.join(ROOT, "assets")
+run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", raw, "-vn", "-ac", "1", "-af", hum, "-ar", "48000",
+     "-c:a", "pcm_s16le", os.path.join(A, "voice_hum.wav")])
+r_ = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "dereverb.py"),
+                     os.path.join(A, "voice_hum.wav"), os.path.join(A, "voice_dry.wav"), "0.5", "0.6"],
+                    capture_output=True, text=True)
+if r_.returncode: sys.exit(r_.stderr[-1500:])
+raw_voice = os.path.join(A, "voice_dry.wav")
+run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", raw_voice, "-vn", "-af", voice, "-ar", "48000",
      "-c:a", "pcm_s16le", os.path.join(ROOT, "assets", "voice.wav")])
 run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", raw, "-i", os.path.join(ROOT, "assets", "voice.wav"),
      "-map", "0:v", "-map", "1:a", "-c:v", "libx264", "-crf", "16", "-preset", "medium",

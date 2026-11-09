@@ -15,6 +15,7 @@ Ela não programa: antes de cada passo, diga em **uma frase simples** o que vai 
 3. Ferramentas (uma vez por máquina): whisper.cpp com o modelo `ggml-small.bin` (variáveis `WHISPER_*` no `.env`),
    detector de rosto Haar e modelo de voz RNNoise em `~/tools/models/` (ou `HAAR_XML` / `RNNOISE_MODEL`).
    Se o render não achar navegador: `export HYPERFRAMES_BROWSER_PATH=` com o caminho do Chrome.
+   Tirar eco da voz (dereverb.py, chamado pelo render_cut.py): `pip install nara_wpe soundfile` (PyPI).
 
 ## A ordem que seguimos
 
@@ -41,11 +42,11 @@ Ela não programa: antes de cada passo, diga em **uma frase simples** o que vai 
    Legenda palavra por palavra: Montserrat Bold (700), letras normais, caixa bordô na palavra falada.
    Recursos do plano (ver `_novidades_2026_11_09` no plano de exemplo): aproximações suaves, planos à mão,
    lista digitada, destaques em bordô, light leak, correção de luz por gravação.
-8. **Som.** `python3 scripts/make_audio.py` (voz + transições e toques, **sem música de fundo**; mixagem a −12 LUFS).
+8. **Som.** `python3 scripts/make_audio.py` (voz + transições e toques, **sem música de fundo**; mixagem a −10 LUFS).
    Trilha só se ela pedir naquele vídeo: `"trilha": true` no plano.
 9. **Rascunho antes de polir.** `npx hyperframes render --quality draft --output renders/rascunho-v1.mp4`.
    Confira quadros-chave, envie e **espere a aprovação** dela.
-10. **Polir.** `--quality high`. Meça o volume no arquivo final (−12 LUFS), confira o film burn e o último quadro,
+10. **Polir.** `--quality high`. Meça o volume no arquivo final (−10 LUFS), confira o film burn e o último quadro,
     registre em `VERIFY.md` e envie. Diga sempre que o som foi conferido só por medição.
 11. **Correções.** Toda correção dela vira regra nova, com data, na seção "Correções" do [DESIGN.md](DESIGN.md)
     (e a regra antiga é ajustada). Se for sobre o processo, ajuste esta skill também.
@@ -78,8 +79,9 @@ Para ouvir os sons soltos (ou usar no CapCut): `python3 elementos/audio/sons.py 
 ## Correções feitas no reel do fim da escala 6x1 (09/11/2026)
 
 - Letras mais grossas (Montserrat 700 na legenda e nas linhas pequenas).
-- Voz mais alta (−12 LUFS) e limpa: zumbido de motor/ar-condicionado tirado com filtros estreitos, eco encurtado
-  com expansor suave. Para achar o zumbido, meça o espectro de uma pausa da gravação original.
+- Voz mais alta (−10 LUFS) e "de microfone perto": zumbido de motor/ar-condicionado tirado com filtros estreitos
+  (meça o espectro de uma pausa da gravação original para achar as frequências), eco da sala tirado com WPE
+  (dereverb.py) e corpo em 170 Hz. Sem afftdn depois do dereverb: ele comia o fim das palavras.
 - Som da transição ~8 dB mais baixo.
 - Antes de cortar, confira se todos os arquivos são as gravações certas: compare a transcrição com o roteiro e
   avise logo se faltar trecho (no 6x1, uma gravação errada veio no lugar da terceira parte).

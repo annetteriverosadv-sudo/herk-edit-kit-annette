@@ -67,7 +67,7 @@ ALVO = float(PLANO.get("lufs", -12.0))  # 2026-11-09: voz mais alta (era -14)
 g = ALVO - lufs(pre)
 for _ in range(3):
     r = subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", pre, "-af",
-                        f"volume={g:.2f}dB,alimiter=limit=0.85:attack=1:release=60:level=false",
+                        f"volume={g:.2f}dB,alimiter=limit=0.89:attack=1:release=60:level=false",
                         "-ar", "48000", "-ac", "2", "-c:a", "pcm_s16le", out], capture_output=True, text=True)
     if r.returncode: sys.exit(r.stderr)
     got = lufs(out)

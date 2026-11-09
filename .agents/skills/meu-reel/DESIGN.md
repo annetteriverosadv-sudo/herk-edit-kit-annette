@@ -85,12 +85,12 @@ salvo pedido diferente da Dra. Annette na hora.
 ## Música e som
 
 - **Sem música de fundo** (correção de 04/11/2026: a trilha "ficou com ruído e estragou o áudio"). O som é a voz, limpa, mais os efeitos suaves.
-- **Voz alta e seca** (correção de 09/11/2026: "parece que está dentro de um banheiro"): tirar zumbido de motor/ar-condicionado (filtros estreitos nas frequências do zumbido, ex. 57/112 Hz), RNNoise cheio, redução espectral, expansor suave para encurtar o eco entre palavras, corte em 300 Hz e presença em 3,2 kHz. Conferir com o Whisper que nenhuma palavra foi "comida" pelo tratamento.
+- **Voz alta, seca e "de microfone perto"** (correções de 09/11/2026: "parece que está dentro de um banheiro", "deixa como se tivesse gravado por microfone"): tirar zumbido de motor/ar-condicionado (filtros estreitos nas frequências do zumbido, ex. 57/112 Hz); tirar o eco da sala com `dereverb.py` (WPE + supressão do rabo, força 0,6); RNNoise; expansor bem suave; corpo de microfone próximo (+3 dB em 170 Hz), corte da caixa (380 Hz) e presença (3 kHz). Não usar afftdn depois do dereverb (come o fim das palavras). Conferir com o Whisper, em trechos de ~13 s, que nenhuma palavra foi "comida".
 - Trilha só se ela pedir num vídeo específico: aí batida leve e discreta, 18–22 dB abaixo da voz, com abaixamento automático quando ela fala.
 - Voz isolada e limpa, sempre na frente.
 - Efeitos sutis: "pop" no título grande, som de teclado na lista digitada.
 - **Som da transição:** mistura de dois sons (sopro suave + tom delicado e harmônico), **bem baixo — cerca de 27 dB abaixo do pico da voz** (correção de 09/11/2026: "achei muito alto"), nunca um whoosh seco/grosso (correção de 04/11/2026).
-- Entrega a **−12 LUFS** (voz mais alta — correção de 09/11/2026; antes −14), pico ≤ −1 dBTP. As referências variaram de −8 a −28 LUFS; padronizar.
+- Entrega a **−10 LUFS** (voz mais alta — correções de 09/11/2026; antes −14, depois −12), pico ≤ −1 dBTP. As referências variaram de −8 a −28 LUFS; padronizar.
 - Se ela pedir trilha: a batida original da skill (`elementos/audio/sons.py`) ou música de biblioteca licenciada (CapCut ou Instagram). Nunca copiar a faixa das referências nem usar as músicas de exemplo do kit.
 
 ## Encerramento (últimos 3–5 s)
@@ -127,3 +127,4 @@ Limitação: não foi possível ouvir as trilhas para dizer gênero ou batida. S
 - 2026-11-09 — Áudio "dentro de um banheiro": voz tratada contra zumbido (motor ~57/112 Hz), ruído e eco (expansor suave); a cadeia nova está no render_cut.py.
 - 2026-11-09 — Voz mais alta: entrega a −12 LUFS (era −14), limitador a −1,4 dBFS.
 - 2026-11-09 — Som da transição estava alto: sopro e tom baixados ~8 dB (≈ 27 dB abaixo da voz); toque e cliques ~3 dB; efeitos entram −6 dB na mixagem.
+- 2026-11-09 — Ainda com eco e voz baixa ("deixa como se tivesse gravado por microfone, perto"): eco da sala tirado com WPE + supressão do rabo (dereverb.py), corpo de microfone próximo (+3 dB em 170 Hz), sem afftdn e com expansor bem suave; entrega a −10 LUFS (substitui a regra de −12).
