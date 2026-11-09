@@ -45,7 +45,7 @@ Ela não programa: antes de cada passo, diga em **uma frase simples** o que vai 
    Confira uma folha de contato: olhos na mesma altura em todos os trechos.
 7. **Legenda e animações.** `python3 scripts/gen_comp.py`, depois `npx hyperframes lint` (0 erros).
    Legenda palavra por palavra: Montserrat Bold (700), letras normais, caixa bordô na palavra falada.
-   Títulos e gancho só em Montserrat (palavra grande em SemiBold, sem itálico).
+   Palavra grande dos títulos e 2ª linha do gancho em Playfair Display itálico (ela prefere assim — 09/11/2026).
 8. **Som.** `python3 scripts/make_audio.py` (voz + transições e toques, **sem música de fundo**; mixagem a −12 LUFS).
    Transição bem baixa (~30 dB abaixo da voz).
    Trilha só se ela pedir naquele vídeo: `"trilha": true` no plano.
@@ -60,7 +60,7 @@ Ela não programa: antes de cada passo, diga em **uma frase simples** o que vai 
 
 | Elemento | Onde | Quando usar |
 | --- | --- | --- |
-| Fontes Montserrat (600/700/800) | [elementos/fontes](elementos/fontes) | Sempre: Montserrat 700 na legenda, 600 na palavra grande dos títulos e do gancho (Playfair itálico saiu em 09/11/2026) |
+| Fontes Montserrat (600/700/800) e Playfair Display itálico | [elementos/fontes](elementos/fontes) | Sempre: Montserrat 700 na legenda, cartões e gancho; Playfair itálico na palavra grande dos títulos e na 2ª linha do gancho |
 | Batida leve (trilha) | [sons.py](elementos/audio/sons.py) `trilha()` | **Desligada por padrão** (ela tirou: "ficou com ruído"). Só se ela pedir num vídeo: `"trilha": true` no plano |
 | Som de transição (sopro + tom) | `sons.py` `sopro()` + `tom()` | Só nas trocas de assunto, junto com o film burn. Sempre baixo |
 | Toque abafado | `sons.py` `toque()` | Quando entra a palavra grande de um título |
@@ -84,7 +84,7 @@ Para ouvir os sons soltos (ou usar no CapCut): `python3 elementos/audio/sons.py 
 ## Correções feitas no reel do BPC/autismo (08–09/11/2026)
 
 - A fala final de contato dela fica com legenda; o cartão de texto final sai antes dela.
-- Legenda mais grossa (Montserrat 700); nada de serifa itálica — títulos em Montserrat SemiBold.
+- Legenda mais grossa (Montserrat 700). Troca do Playfair itálico por Montserrat testada e desfeita: destaques ficam em Playfair.
 - Voz mais alta (−12 LUFS) e sem eco/ruído (limpar_voz.py); som da transição ~10 dB mais baixo.
 
 ## Armadilhas técnicas (já custaram tempo)

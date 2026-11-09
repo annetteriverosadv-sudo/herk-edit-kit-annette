@@ -2,8 +2,8 @@
 """Passo 5 — gera index.html (composição HyperFrames) no estilo da Dra. Annette, a partir de assets/plano.json.
 
 - Legenda palavra por palavra: Montserrat 700 (correção 09/11/2026), 58 px, letras normais, sombra difusa, caixa bordô na palavra falada.
-- Gancho: linhas do plano ("sans" = Montserrat 700; "serifa" = Montserrat 600 maior, sem itálico — correção 09/11/2026), surgindo na palavra indicada.
-- Títulos de palavra-chave: linha pequena + palavra grande em Montserrat 600 (sem itálico) (entra com desfoque e zoom).
+- Gancho: linhas do plano ("sans" = Montserrat 700; "serifa" = Playfair itálico), surgindo na palavra indicada.
+- Títulos de palavra-chave: linha pequena + palavra grande em Playfair itálico (entra com desfoque e zoom).
 - Listas: cartão bege com borda bordô; cada item entra na palavra falada, com bolinha bordô.
 - Film burn singelo em cada troca de bloco do plano (troca de assunto). Sem selo de tema no topo, sem cartão final.
 Tempos: sempre os da fala já cortada (assets/transcript.json). Grava também assets/transitions.json.
@@ -146,7 +146,7 @@ html,body{{margin:0;width:1080px;height:1920px;overflow:hidden;background:{PRETO
 #hook{{position:absolute;left:70px;right:70px;top:1060px;text-align:center;z-index:12}}
 #hook .h1{{font-family:'Montserrat';font-weight:700;font-size:60px;line-height:1.15;color:#fff;
   text-shadow:{HALO}}}
-#hook .h2{{font-family:'Montserrat';font-weight:600;font-size:76px;line-height:1.1;
+#hook .h2{{font-family:'Playfair Display';font-style:italic;font-weight:800;font-size:92px;line-height:1.05;
   color:#fff;margin-top:8px;text-shadow:{HALO}}}
 /* captions */
 #caps{{position:absolute;left:90px;right:90px;top:1190px;height:200px;z-index:10}}
@@ -156,7 +156,7 @@ html,body{{margin:0;width:1080px;height:1920px;overflow:hidden;background:{PRETO
 /* emphasis title */
 {T_IDS}{{position:absolute;left:70px;right:70px;top:1090px;text-align:center;z-index:12}}
 {T_SMALL}{{font-family:'Montserrat';font-weight:600;font-size:56px;color:#fff;text-shadow:{HALO}}}
-{T_BIG}{{font-family:'Montserrat';font-weight:600;font-size:94px;line-height:1.05;color:#fff;letter-spacing:-1px;
+{T_BIG}{{font-family:'Playfair Display';font-style:italic;font-weight:800;font-size:116px;line-height:1.0;color:#fff;
   text-shadow:{HALO}}}
 /* list cards */
 .card{{position:absolute;left:90px;right:150px;background:rgba(239,230,216,.95);border-radius:28px;
@@ -165,7 +165,7 @@ html,body{{margin:0;width:1080px;height:1920px;overflow:hidden;background:{PRETO
 .card .head{{font-family:'Montserrat';font-weight:800;font-size:40px;color:{BORDO};text-transform:uppercase;letter-spacing:2px;margin-bottom:14px}}
 .card .item{{font-family:'Montserrat';font-weight:700;font-size:54px;line-height:1.35;color:{PRETO};display:flex;align-items:center;gap:22px}}
 .card .tick{{flex:0 0 26px;height:26px;border-radius:50%;background:{BORDO};display:inline-block}}
-.card .foot{{font-family:'Montserrat';font-weight:600;font-size:54px;color:{BORDO};margin-top:12px}}
+.card .foot{{font-family:'Playfair Display';font-style:italic;font-weight:800;font-size:58px;color:{BORDO};margin-top:12px}}
 """
 
 hook_html = ""

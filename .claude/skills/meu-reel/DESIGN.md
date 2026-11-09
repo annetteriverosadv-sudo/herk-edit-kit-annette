@@ -45,7 +45,7 @@ salvo pedido diferente da Dra. Annette na hora.
 ## Ênfase grande (títulos de palavra-chave)
 
 - 3 a 4 por vídeo, nunca duas seguidas. Substituem a legenda naquele momento.
-- Uma só família: linha pequena + palavra grande em **Montserrat SemiBold (600), sem itálico**, branca — combina com os outros vídeos do perfil (correção de 09/11/2026: nada de serifa itálica Playfair).
+- Mistura de duas fontes na mesma frase: linha pequena em sans + palavra grande em **serifa itálica** (Playfair Display Italic), branca ou bege. (Testada a troca por Montserrat SemiBold em 09/11/2026 e desfeita: "a letra anterior fica mais bonita".)
 - Palavra grande com ~7–9% da altura do quadro, na faixa entre 40% e 60% da altura, alinhada à esquerda ou ao centro.
 - Entrada: cada linha surge "fantasma" (transparente e desfocada) e fica nítida em 0,2 s. A frase vai empilhando linha por linha.
 - Saída: corte seco ou fade de 0,15 s.
@@ -54,7 +54,7 @@ salvo pedido diferente da Dra. Annette na hora.
 
 - Começa já com a frase-problema, sem "olá" nem apresentação.
 - **Sem selo/rótulo de tema em cima da cabeça dela** (ex.: "AUXÍLIO-ACIDENTE" no topo) — correção de 04/11/2026.
-- Título empilhado de 2–3 linhas, todo em Montserrat (2ª linha em SemiBold maior, sem itálico — correção de 09/11/2026), entrando linha por linha. Posição: terço superior (25–45%), sem tapar os olhos.
+- Título empilhado de 2–3 linhas (sans pesada + palavra em serifa itálica), entrando linha por linha. Posição: terço superior (25–45%), sem tapar os olhos.
 - Opção: pergunta direta no topo ("VOCÊ SABE O QUE É…?") com a resposta aparecendo na legenda.
 - O primeiro corte ou mudança visual acontece antes de 3 s.
 
@@ -125,5 +125,5 @@ Limitação: não foi possível ouvir as trilhas para dizer gênero ou batida. S
 - 2026-11-04 — Música de fundo retirada ("ficou com ruído e estragou o áudio"): reel sem trilha; só voz + efeitos suaves. Substitui a escolha da batida leve.
 - 2026-11-08 — Fala final de contato dela ("busque uma advogada… ou comente aqui") fica no reel **com legenda**: o cartão de texto final não cobre essa fala (entra antes e sai quando ela começa).
 - 2026-11-09 — Legenda mais grossa: Montserrat Bold (700) no lugar da SemiBold.
-- 2026-11-09 — Palavra grande em serifa itálica (Playfair) trocada por Montserrat SemiBold sem itálico, nos títulos e no gancho: mais harmonioso com o perfil.
+- 2026-11-09 — Palavras de destaque: troca da serifa itálica (Playfair) por Montserrat SemiBold testada e **desfeita** — ela prefere a letra anterior. Fica Playfair itálico nos títulos e no gancho.
 - 2026-11-09 — Voz mais alta e sem eco ("parecia dentro de um banheiro"): remoção de reverberação + redução de ruído antes da equalização; efeito da transição bem mais baixo.
