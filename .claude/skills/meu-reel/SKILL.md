@@ -26,6 +26,9 @@ Ela não programa: antes de cada passo, diga em **uma frase simples** o que vai 
 3. **Transcrever com o Whisper local** (nada vai para a internet), uma gravação por vez:
    `npm run transcribe -- video-projects/<nome>/source/work/<take>.mov -o video-projects/<nome>/transcripts/<take>.json --prompt "<termos do tema>"`.
    O `--prompt` com os termos jurídicos do tema (ex.: auxílio-acidente, indenizatória) corrige a grafia.
+   **Se a transcrição vier quase vazia** (o Whisper "desiste" depois do "vai!" do começo, com áudio baixo/zumbido):
+   `PROMPT_TEMA="Sobre o BPC e o INSS." python3 scripts/transcrever.py <take> ...` — divide a fala pelos silêncios
+   e transcreve frase por frase (prompt curto; prompt longo gera palavras inventadas). Revise a grafia palavra por palavra.
    Leia a transcrição inteira; a fala só sai pela transcrição (não dá para "ouvir").
 4. **Plano.** Escreva `assets/plano.json` a partir de [plano_exemplo.json](elementos/scripts/plano_exemplo.json):
    ordem dos blocos (segue o roteiro dela), gancho, títulos e listas.
@@ -35,15 +38,20 @@ Ela não programa: antes de cada passo, diga em **uma frase simples** o que vai 
 5. **Cortes de erro — mostrar antes de aplicar.** Liste começos falsos, "vai!", "ok", "pode iniciar", voz de
    outra pessoa e repetições. Monte `review/cortes-de-erro.mp4` (cada trecho com rótulo "CORTE n — SERÁ REMOVIDO"),
    envie e **espere ela aprovar**. Pausas ≥ 0,30 s podem ser cortadas sem perguntar.
-6. **Cortar.** `python3 scripts/edl.py` e `python3 scripts/render_cut.py` (usa os originais 4K, limpa a voz).
+6. **Cortar.** `python3 scripts/edl.py` e `python3 scripts/render_cut.py` (usa os originais 4K).
+   Depois **limpe a voz**: `python3 scripts/limpar_voz.py` (zumbido → eco da sala com WPE → ruído ensinado com
+   `amostras_ruido` do plano → equalização e compressão). Precisa `pip install --break-system-packages nara_wpe noisereduce`.
+   Sem amostra de ruído real, a limpeza apaga a voz baixa. Confira por medição: fundo ≥ 20 dB abaixo da fala.
    Confira uma folha de contato: olhos na mesma altura em todos os trechos.
 7. **Legenda e animações.** `python3 scripts/gen_comp.py`, depois `npx hyperframes lint` (0 erros).
-   Legenda palavra por palavra: Montserrat, letras normais, caixa bordô na palavra falada.
-8. **Som.** `python3 scripts/make_audio.py` (voz + transições e toques, **sem música de fundo**; mixagem a −14 LUFS).
+   Legenda palavra por palavra: Montserrat Bold (700), letras normais, caixa bordô na palavra falada.
+   Títulos e gancho só em Montserrat (palavra grande em SemiBold, sem itálico).
+8. **Som.** `python3 scripts/make_audio.py` (voz + transições e toques, **sem música de fundo**; mixagem a −12 LUFS).
+   Transição bem baixa (~30 dB abaixo da voz).
    Trilha só se ela pedir naquele vídeo: `"trilha": true` no plano.
 9. **Rascunho antes de polir.** `npx hyperframes render --quality draft --output renders/rascunho-v1.mp4`.
    Confira quadros-chave, envie e **espere a aprovação** dela.
-10. **Polir.** `--quality high`. Meça o volume no arquivo final (−14 LUFS), confira o film burn e o último quadro,
+10. **Polir.** `--quality high`. Meça o volume no arquivo final (−12 LUFS), confira o film burn e o último quadro,
     registre em `VERIFY.md` e envie. Diga sempre que o som foi conferido só por medição.
 11. **Correções.** Toda correção dela vira regra nova, com data, na seção "Correções" do [DESIGN.md](DESIGN.md)
     (e a regra antiga é ajustada). Se for sobre o processo, ajuste esta skill também.
@@ -52,7 +60,7 @@ Ela não programa: antes de cada passo, diga em **uma frase simples** o que vai 
 
 | Elemento | Onde | Quando usar |
 | --- | --- | --- |
-| Fontes Montserrat (600/700/800) e Playfair Display itálico | [elementos/fontes](elementos/fontes) | Sempre: Montserrat na legenda, cartões e gancho; Playfair na palavra grande dos títulos e na 2ª linha do gancho |
+| Fontes Montserrat (600/700/800) | [elementos/fontes](elementos/fontes) | Sempre: Montserrat 700 na legenda, 600 na palavra grande dos títulos e do gancho (Playfair itálico saiu em 09/11/2026) |
 | Batida leve (trilha) | [sons.py](elementos/audio/sons.py) `trilha()` | **Desligada por padrão** (ela tirou: "ficou com ruído"). Só se ela pedir num vídeo: `"trilha": true` no plano |
 | Som de transição (sopro + tom) | `sons.py` `sopro()` + `tom()` | Só nas trocas de assunto, junto com o film burn. Sempre baixo |
 | Toque abafado | `sons.py` `toque()` | Quando entra a palavra grande de um título |
@@ -73,7 +81,19 @@ Para ouvir os sons soltos (ou usar no CapCut): `python3 elementos/audio/sons.py 
 - Transição: film burn singelo nas trocas de assunto, no lugar do flash bege.
 - Som da transição: dois sons misturados (sopro + tom), harmônico e bem mais baixo.
 
+## Correções feitas no reel do BPC/autismo (08–09/11/2026)
+
+- A fala final de contato dela fica com legenda; o cartão de texto final sai antes dela.
+- Legenda mais grossa (Montserrat 700); nada de serifa itálica — títulos em Montserrat SemiBold.
+- Voz mais alta (−12 LUFS) e sem eco/ruído (limpar_voz.py); som da transição ~10 dB mais baixo.
+
 ## Armadilhas técnicas (já custaram tempo)
+
+- Whisper com áudio baixo pula a fala depois de um "vai!" curto: use `scripts/transcrever.py` (trechos por silêncio).
+- RNNoise e redução espectral "às cegas" apagam a voz quando a gravação é baixa (−36 LUFS): suba o ganho antes
+  e ensine o ruído com amostras reais das pausas.
+- O PyTorch (download.pytorch.org) e binários do GitHub não baixam nesta rede: DeepFilterNet fica de fora.
+- O render precisa de `export HYPERFRAMES_BROWSER_PATH=/usr/bin/google-chrome` (o download do Chrome é bloqueado).
 
 - `mix-blend-mode` não funciona sobre o vídeo no render (o vídeo é composto à parte): use camada com transparência normal.
 - O `hyperframes snapshot` não mostra fades pela metade; confira efeitos curtos no vídeo renderizado.

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Passo 5 — gera index.html (composição HyperFrames) no estilo da Dra. Annette, a partir de assets/plano.json.
 
-- Legenda palavra por palavra: Montserrat 600, 58 px, letras normais, sombra difusa, caixa bordô na palavra falada.
-- Gancho: linhas do plano ("sans" = Montserrat 700; "serifa" = Playfair itálico), surgindo na palavra indicada.
-- Títulos de palavra-chave: linha pequena + palavra grande em Playfair itálico (entra com desfoque e zoom).
+- Legenda palavra por palavra: Montserrat 700 (correção 09/11/2026), 58 px, letras normais, sombra difusa, caixa bordô na palavra falada.
+- Gancho: linhas do plano ("sans" = Montserrat 700; "serifa" = Montserrat 600 maior, sem itálico — correção 09/11/2026), surgindo na palavra indicada.
+- Títulos de palavra-chave: linha pequena + palavra grande em Montserrat 600 (sem itálico) (entra com desfoque e zoom).
 - Listas: cartão bege com borda bordô; cada item entra na palavra falada, com bolinha bordô.
 - Film burn singelo em cada troca de bloco do plano (troca de assunto). Sem selo de tema no topo, sem cartão final.
 Tempos: sempre os da fala já cortada (assets/transcript.json). Grava também assets/transitions.json.
@@ -77,7 +77,8 @@ while k < len(groups) - 1:
         groups[k] = joined[:4]
         rest = joined[4:]
         if rest:
-            if k + 2 < len(groups) and groups[k + 2][0] == rest[-1] + 1 and len(rest) + len(groups[k + 2]) <= 4:
+            if (k + 2 < len(groups) and groups[k + 2][0] == rest[-1] + 1 and len(rest) + len(groups[k + 2]) <= 4
+                    and W[rest[-1]]["text"][-1:] not in ".?!"):  # não junta o fim de uma frase com a próxima
                 groups[k + 1] = rest + groups[k + 2]; del groups[k + 2]
             else:
                 groups[k + 1] = rest
@@ -145,17 +146,17 @@ html,body{{margin:0;width:1080px;height:1920px;overflow:hidden;background:{PRETO
 #hook{{position:absolute;left:70px;right:70px;top:1060px;text-align:center;z-index:12}}
 #hook .h1{{font-family:'Montserrat';font-weight:700;font-size:60px;line-height:1.15;color:#fff;
   text-shadow:{HALO}}}
-#hook .h2{{font-family:'Playfair Display';font-style:italic;font-weight:800;font-size:92px;line-height:1.05;
+#hook .h2{{font-family:'Montserrat';font-weight:600;font-size:76px;line-height:1.1;
   color:#fff;margin-top:8px;text-shadow:{HALO}}}
 /* captions */
 #caps{{position:absolute;left:90px;right:90px;top:1190px;height:200px;z-index:10}}
 .cg{{position:absolute;left:0;right:0;top:0;text-align:center;opacity:0;visibility:hidden;
-  font-family:'Montserrat';font-weight:600;font-size:58px;line-height:1.3;color:#fff;word-spacing:-10px}}
+  font-family:'Montserrat';font-weight:700;font-size:58px;line-height:1.3;color:#fff;word-spacing:-10px}}
 .w{{display:inline-block;padding:0 9px 2px;border-radius:10px;background:rgba(142,28,36,0);text-shadow:{HALO}}}
 /* emphasis title */
 {T_IDS}{{position:absolute;left:70px;right:70px;top:1090px;text-align:center;z-index:12}}
 {T_SMALL}{{font-family:'Montserrat';font-weight:600;font-size:56px;color:#fff;text-shadow:{HALO}}}
-{T_BIG}{{font-family:'Playfair Display';font-style:italic;font-weight:800;font-size:116px;line-height:1.0;color:#fff;
+{T_BIG}{{font-family:'Montserrat';font-weight:600;font-size:94px;line-height:1.05;color:#fff;letter-spacing:-1px;
   text-shadow:{HALO}}}
 /* list cards */
 .card{{position:absolute;left:90px;right:150px;background:rgba(239,230,216,.95);border-radius:28px;
@@ -164,7 +165,7 @@ html,body{{margin:0;width:1080px;height:1920px;overflow:hidden;background:{PRETO
 .card .head{{font-family:'Montserrat';font-weight:800;font-size:40px;color:{BORDO};text-transform:uppercase;letter-spacing:2px;margin-bottom:14px}}
 .card .item{{font-family:'Montserrat';font-weight:700;font-size:54px;line-height:1.35;color:{PRETO};display:flex;align-items:center;gap:22px}}
 .card .tick{{flex:0 0 26px;height:26px;border-radius:50%;background:{BORDO};display:inline-block}}
-.card .foot{{font-family:'Playfair Display';font-style:italic;font-weight:800;font-size:58px;color:{BORDO};margin-top:12px}}
+.card .foot{{font-family:'Montserrat';font-weight:600;font-size:54px;color:{BORDO};margin-top:12px}}
 """
 
 hook_html = ""

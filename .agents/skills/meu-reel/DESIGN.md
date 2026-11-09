@@ -34,7 +34,7 @@ salvo pedido diferente da Dra. Annette na hora.
 ## Legendas
 
 - 2 a 4 palavras por bloco, em 1 ou 2 linhas, centralizadas.
-- Fonte **suave**: Montserrat SemiBold (600), em letras normais (sem CAIXA ALTA), branca, só com sombra suave — sem contorno preto grosso e sem fonte condensada pesada (correção de 04/11/2026).
+- Fonte: **Montserrat Bold (700)** — mais grossa que a SemiBold (correção de 09/11/2026) —, em letras normais (sem CAIXA ALTA), branca, só com sombra suave — sem contorno preto grosso e sem fonte condensada pesada (correção de 04/11/2026).
 - Tamanho: ~3% da altura do quadro (≈ 58 px em 1080×1920).
 - Posição: bloco entre **62% e 72% da altura** (cintura). Nunca sobre o rosto e nunca abaixo de 75%, por causa da interface do Instagram.
 - **Palavra falada destacada (karaokê):** a palavra do momento ganha uma caixa bordô com cantos arredondados e texto branco. Em fundo escuro ou bordô, a caixa vira bege com texto bordô.
@@ -45,7 +45,7 @@ salvo pedido diferente da Dra. Annette na hora.
 ## Ênfase grande (títulos de palavra-chave)
 
 - 3 a 4 por vídeo, nunca duas seguidas. Substituem a legenda naquele momento.
-- Mistura de duas fontes na mesma frase: linha pequena em sans + palavra grande em **serifa itálica** (Playfair Display Italic), branca ou bege.
+- Uma só família: linha pequena + palavra grande em **Montserrat SemiBold (600), sem itálico**, branca — combina com os outros vídeos do perfil (correção de 09/11/2026: nada de serifa itálica Playfair).
 - Palavra grande com ~7–9% da altura do quadro, na faixa entre 40% e 60% da altura, alinhada à esquerda ou ao centro.
 - Entrada: cada linha surge "fantasma" (transparente e desfocada) e fica nítida em 0,2 s. A frase vai empilhando linha por linha.
 - Saída: corte seco ou fade de 0,15 s.
@@ -54,7 +54,7 @@ salvo pedido diferente da Dra. Annette na hora.
 
 - Começa já com a frase-problema, sem "olá" nem apresentação.
 - **Sem selo/rótulo de tema em cima da cabeça dela** (ex.: "AUXÍLIO-ACIDENTE" no topo) — correção de 04/11/2026.
-- Título empilhado de 2–3 linhas (sans pesada + palavra em serifa itálica), entrando linha por linha. Posição: terço superior (25–45%), sem tapar os olhos.
+- Título empilhado de 2–3 linhas, todo em Montserrat (2ª linha em SemiBold maior, sem itálico — correção de 09/11/2026), entrando linha por linha. Posição: terço superior (25–45%), sem tapar os olhos.
 - Opção: pergunta direta no topo ("VOCÊ SABE O QUE É…?") com a resposta aparecendo na legenda.
 - O primeiro corte ou mudança visual acontece antes de 3 s.
 
@@ -79,6 +79,7 @@ salvo pedido diferente da Dra. Annette na hora.
 - 9:16, 1080×1920, 30 fps.
 - Enquadramento igual em todos os trechos: olhos a ~28% do topo e rosto com 16–20% da altura do quadro.
 - Grade quente e sóbria: pele natural, fundo um pouco mais escuro que o rosto. (Filtro de cor, vinheta e grão ainda não foram aplicados em nenhum reel — só usar se ela pedir.)
+- Correção de luz leve (rosto mais claro, levemente quente, nitidez sutil) quando ela pedir — usada no reel do BPC (08/11/2026).
 - Fundo desfocado quando estiver poluído. Prefira cenário neutro (cinza claro, bege ou estante).
 - Logo Riveros no canto: ainda não usado (falta o arquivo oficial do logo) — só com o arquivo dela e se ela pedir.
 
@@ -86,10 +87,10 @@ salvo pedido diferente da Dra. Annette na hora.
 
 - **Sem música de fundo** (correção de 04/11/2026: a trilha "ficou com ruído e estragou o áudio"). O som é a voz dela, limpa, mais os efeitos suaves.
 - Trilha só se ela pedir num vídeo específico: aí batida leve e discreta, 18–22 dB abaixo da voz, com abaixamento automático quando ela fala.
-- Voz isolada e limpa, sempre na frente.
+- Voz isolada e limpa, sempre na frente e **alta**. Tirar o eco da sala (som de "banheiro") e os ruídos, não só o chiado (correção de 09/11/2026).
 - Efeitos sutis: "pop" no título grande, som de teclado na lista digitada.
-- **Som da transição:** mistura de dois sons (sopro suave + tom delicado e harmônico), bem baixo, nunca um whoosh seco/grosso (correção de 04/11/2026).
-- Entrega a **−14 LUFS**, pico ≤ −1 dBTP. As referências variaram de −8 a −28 LUFS; padronizar.
+- **Som da transição:** mistura de dois sons (sopro suave + tom delicado e harmônico), bem baixo — quase imperceptível, cerca de 25 dB abaixo da voz —, nunca um whoosh seco/grosso (correções de 04/11 e 09/11/2026).
+- Entrega a **−12 LUFS** (correção de 09/11/2026: voz mais alta; antes −14), pico ≤ −1 dBTP. As referências variaram de −8 a −28 LUFS; padronizar.
 - Se ela pedir trilha: a batida original da skill (`elementos/audio/sons.py`) ou música de biblioteca licenciada (CapCut ou Instagram). Nunca copiar a faixa das referências nem usar as músicas de exemplo do kit.
 
 ## Encerramento (últimos 3–5 s)
@@ -122,3 +123,7 @@ Limitação: não foi possível ouvir as trilhas para dizer gênero ou batida. S
 - 2026-11-04 — Transição: film burn singelo nas trocas de assunto (como nas referências), no lugar do flash bege.
 - 2026-11-04 — Som da transição estava grosseiro: mistura de dois sons mais harmônica e bem mais baixa.
 - 2026-11-04 — Música de fundo retirada ("ficou com ruído e estragou o áudio"): reel sem trilha; só voz + efeitos suaves. Substitui a escolha da batida leve.
+- 2026-11-08 — Fala final de contato dela ("busque uma advogada… ou comente aqui") fica no reel **com legenda**: o cartão de texto final não cobre essa fala (entra antes e sai quando ela começa).
+- 2026-11-09 — Legenda mais grossa: Montserrat Bold (700) no lugar da SemiBold.
+- 2026-11-09 — Palavra grande em serifa itálica (Playfair) trocada por Montserrat SemiBold sem itálico, nos títulos e no gancho: mais harmonioso com o perfil.
+- 2026-11-09 — Voz mais alta e sem eco ("parecia dentro de um banheiro"): remoção de reverberação + redução de ruído antes da equalização; efeito da transição bem mais baixo.

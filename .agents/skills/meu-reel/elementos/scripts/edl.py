@@ -84,6 +84,7 @@ runs = {t: voiced_runs(t) for t in takes}
 words = {t: load_words(t, runs[t]) for t in takes}
 blocks = [(b["take"], palavra(words[b["take"]], b["de"]), palavra(words[b["take"]], b["ate"]), b["nome"], False)
           for b in PLANO["blocos"]]
+FIM_S = [b.get("fim_s") for b in PLANO["blocos"]]  # opcional: força o fim do bloco (s da gravação) p/ não cortar o final da palavra
 
 clips, out_words, t_out, punch = [], [], 0.0, 1.0
 for bi, (take, a, b, label, flash) in enumerate(blocks):
@@ -103,6 +104,8 @@ for bi, (take, a, b, label, flash) in enumerate(blocks):
             subs.append([na - PRE, nb + POST])
         else:
             subs[-1][1] = nb + POST
+    if FIM_S[bi]:
+        subs[-1][1] = max(subs[-1][1], FIM_S[bi])
     # snap every clip to a whole number of frames so video and audio lengths match exactly
     subs = [[round(ia * 30) / 30, round(ia * 30) / 30 + max(1, round((ib - ia) * 30)) / 30] for ia, ib in subs]
     for si, (ia, ib) in enumerate(subs):

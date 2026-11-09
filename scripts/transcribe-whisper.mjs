@@ -18,6 +18,8 @@
 //   --prompt <text>       optional context/vocabulary hint for Whisper
 //   --dtw <preset|off>    token-level timing (default: auto from model name, e.g. small)
 //   --keep-audio          keep the extracted 16 kHz WAV next to the output
+//   --vad                 split speech with Silero VAD first (WHISPER_VAD_MODEL in env/.env).
+//                         Use when whisper skips long stretches (quiet audio, hum, short "vai!" at the start).
 //
 // Times are always written on the SOURCE timeline: when --start is used, the
 // offset is added back so word times match the original recording.
@@ -71,6 +73,8 @@ const opts = {
   prompt: "",
   dtw: cfg("WHISPER_DTW") || "auto",
   keepAudio: false,
+  vad: false,
+  vadModel: cfg("WHISPER_VAD_MODEL"),
 };
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
@@ -84,6 +88,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === "--prompt") opts.prompt = args[++i];
   else if (a === "--dtw") opts.dtw = args[++i];
   else if (a === "--keep-audio") opts.keepAudio = true;
+  else if (a === "--vad") opts.vad = true;
   else if (a.startsWith("--")) die(`unknown option: ${a}`);
   else if (!opts.input) opts.input = a;
   else die(`unexpected argument: ${a}`);
@@ -145,6 +150,11 @@ if (useDtw) wArgs.push("-dtw", opts.dtw, "-nfa");
 else wArgs.push("-ml", "1", "-sow");
 wArgs.push("-ojf", "-of", outPrefix, "-np");
 if (opts.prompt) wArgs.push("--prompt", opts.prompt);
+if (opts.vad) {
+  const vm = resolveFromRoot(opts.vadModel);
+  if (!vm || !existsSync(vm)) die(`VAD model not found. Set WHISPER_VAD_MODEL in .env (got: ${vm || "empty"})`);
+  wArgs.push("--vad", "--vad-model", vm);
+}
 console.log(
   `transcribing locally with ${basename(opts.model)} (${opts.language}, ` +
     `${useDtw ? `dtw ${opts.dtw}` : "segment timing"}), ${(clipEnd - opts.start).toFixed(1)}s of audio ...`,

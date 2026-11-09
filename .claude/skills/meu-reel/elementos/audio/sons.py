@@ -110,7 +110,8 @@ class Sons:
 
 
 # Níveis aprovados (04/11/2026) — mantenha baixos.
-NIVEL_SOPRO, NIVEL_TOM, NIVEL_TOQUE, NIVEL_CLIQUE = 0.13, 0.07, 0.45, 0.22
+# transição ~10 dB mais baixa (correção 09/11/2026: "achei muito alto")
+NIVEL_SOPRO, NIVEL_TOM, NIVEL_TOQUE, NIVEL_CLIQUE = 0.04, 0.022, 0.32, 0.16
 FREQ_CLIQUES = [1450, 1300, 1550, 1380]
 
 

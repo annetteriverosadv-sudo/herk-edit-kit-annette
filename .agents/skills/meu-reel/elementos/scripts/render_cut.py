@@ -8,7 +8,8 @@ Outputs assets/cut.mp4 (video, silent-safe) and assets/voice.wav (cleaned voice,
 import json, os, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor
 
-from plano import ROOT, caminho
+from plano import ROOT, caminho, carregar
+PLANO = carregar()
 ORIG = caminho("source", "orig")
 TMP = os.path.join(ROOT, "assets", "clips")
 # Limpeza de voz RNNoise: $RNNOISE_MODEL ou ~/tools/models/sh.rnnn
@@ -50,7 +51,10 @@ def clip_job(k_c):
     SW, SH = _size(_orig(c["take"]))
     w, h = round(cr["w"] * SW / 2) * 2, round(cr["w"] * SH / 2) * 2
     x, y = round(cr["x"] * SW), round(cr["y"] * SH)
-    vf = (f"crop={w}:{h}:{x}:{y},scale=1080:1920:flags=lanczos,fps=30,setsar=1,"
+    # correção de luz só quando ela pede ("corrigir_luz": true no plano): rosto mais claro, levemente quente, nitidez leve
+    cc = ("eq=gamma=1.10:contrast=1.05:saturation=1.04,colorbalance=rm=0.03:bm=-0.03,unsharp=5:5:0.35,"
+          if PLANO.get("corrigir_luz") else "")
+    vf = (f"crop={w}:{h}:{x}:{y},scale=1080:1920:flags=lanczos,{cc}fps=30,setsar=1,"
           f"trim=end_frame={nfr},setpts=PTS-STARTPTS")
     af = (f"aresample=48000,apad,atrim=end={dur:.6f},asetpts=PTS-STARTPTS,"
           f"afade=t=in:d=0.012,afade=t=out:st={max(0, dur - 0.012):.3f}:d=0.012")
@@ -72,7 +76,10 @@ run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-
 
 rnn = f"arnndn=m='{RNN}':mix=0.85," if os.path.exists(RNN) else ""
 if not rnn: print("AVISO: modelo RNNoise não encontrado; voz tratada só com redução espectral.")
-voice = ("highpass=f=80,lowpass=f=14000,"
+# zumbido medido no escritório (nov/2026): ~57 Hz e 113 Hz (+ 170) e apito ~3,87 kHz. A voz final sai do limpar_voz.py
+voice = ("highpass=f=90,lowpass=f=14000,"
+         "bandreject=f=57:width_type=h:w=8,bandreject=f=113:width_type=h:w=8,bandreject=f=170:width_type=h:w=10,"
+         "bandreject=f=3870:width_type=h:w=60,"
          f"{rnn}afftdn=nf=-42,"
          "equalizer=f=200:t=q:w=1:g=-2,equalizer=f=3500:t=q:w=1.2:g=3,"
          "deesser=i=0.3,acompressor=threshold=-22dB:ratio=3:attack=8:release=120:makeup=3,"

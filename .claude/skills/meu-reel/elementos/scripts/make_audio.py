@@ -63,13 +63,14 @@ def lufs(path):
 
 
 pre, out = os.path.join(A, "mix_pre.wav"), os.path.join(A, "mix.wav")
-g = -14.0 - lufs(pre)
+ALVO = float(PLANO.get("lufs", -14.0))  # 09/11/2026: ela pediu voz mais alta -> -12
+g = ALVO - lufs(pre)
 for _ in range(3):
     r = subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", pre, "-af",
-                        f"volume={g:.2f}dB,alimiter=limit=0.76:attack=1:release=60:level=false",
+                        f"volume={g:.2f}dB,alimiter=limit=0.87:attack=1:release=60:level=false",
                         "-ar", "48000", "-ac", "2", "-c:a", "pcm_s16le", out], capture_output=True, text=True)
     if r.returncode: sys.exit(r.stderr)
     got = lufs(out)
-    if abs(got + 14.0) <= 0.3: break
-    g += -14.0 - got
+    if abs(got - ALVO) <= 0.3: break
+    g += ALVO - got
 print(f"mixagem: {got} LUFS (ganho {g:.1f} dB), {DUR:.2f} s, trilha {'ligada' if PLANO.get('trilha') else 'desligada'}")
