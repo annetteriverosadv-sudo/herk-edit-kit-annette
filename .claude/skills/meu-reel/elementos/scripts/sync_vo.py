@@ -29,8 +29,9 @@ FACES = json.load(open(caminho("assets", "faces.json")))
 FACE_TARGET, EYE_TARGET = 0.175, 0.28
 PAUSA, PRE, POST = 0.30, 0.10, 0.14
 FPS, SR = 30, 48000
-R_MIN, R_MAX = 0.5, 1.8           # velocidade do vídeo permitida
-DERIVA = 0.08                     # atraso/adiantamento máximo da boca antes de um jump cut (s)
+R_MIN, R_MAX = 0.7, 1.75          # velocidade do vídeo permitida
+A_MIN, A_MAX = 0.72, 1.35          # aceleração permitida da voz (WSOLA, sem mudar o tom)
+DERIVA = 0.06                     # atraso/adiantamento máximo da boca antes de um jump cut (s)
 SO_PLANO = "--plano" in sys.argv
 
 
@@ -100,6 +101,8 @@ for e in L.get("emendas", []):
            for k, t in enumerate(e["palavras"])]
     W = sorted(novos + ins, key=lambda w: w["start"])
     print(f"emenda: {b1 - a1:.2f}s em {a1:.2f}s trocados por {dur:.2f}s ({' '.join(e['palavras'])})")
+
+sf.write(caminho("assets", "vo_emendada.wav"), vo_x, SR, subtype="PCM_16")  # para o conferir_sync.py
 
 # ---------- 2. fala da locução por energia (pausas >= 0,30 s viram cortes) ----------
 hop = SR // 100
@@ -210,7 +213,11 @@ def mapa_bloco(bl):
     a, b = bl["vo"]; sa, sb = bl["src"]; tw = take_words[bl["take"]]
     v0, v1 = runs[W[a]["run"]][0] - 0.15, runs[W[b]["run"]][1] + 0.15
     s0, s1 = max(0, tw[sa]["start"] - 0.6), tw[sb]["end"] + 0.6
-    ys = src_audio(bl["take"])
+    return mapa_trecho(bl["take"], v0, v1, s0, s1)
+
+
+def mapa_trecho(take, v0, v1, s0, s1):
+    ys = src_audio(take)
     A = feats(VO16[int(v0 * 16000):int(v1 * 16000)]); B = feats(ys[int(s0 * 16000):int(s1 * 16000)])
     path = dtw(A, B)
     vi = np.array([p[0] for p in path]); sj = np.array([p[1] for p in path])
@@ -238,10 +245,14 @@ def crop_for(take, punch):
 
 
 VPL = {ref(W, z["em"]): z["plano"] for z in L.get("planos", [])}
+# trecho da locução que começa noutra palavra do vídeo (ex.: locução "cai para…", vídeo "essas 42 horas caem para…")
+GSRC = {ref(W, z["em"]): z["src"] for z in L.get("inicio_no_video", [])}
+RITMO = [(W[ref(W, z["de"])]["s"], W[ref(W, z["ate"])]["e"], z.get("voz_max", 1.1), z.get("video_min", 0.55))
+         for z in L.get("ritmo", [])]
 VZM = {ref(W, z["em"]) for z in L.get("aproximacoes", [])}
 PASSO = 0.20
 
-clips, out_words, t_out, punch = [], [], 0.0, 1.0
+clips, out_words, t_out, punch, AUDIO = [], [], 0.0, 1.0, []
 for bi, bl in enumerate(blocos):
     m = mapa_bloco(bl)
     a, b = bl["vo"]
@@ -254,17 +265,35 @@ for bi, bl in enumerate(blocos):
         vb = r[1] + POST
         if rid + 1 < len(runs): vb = min(vb, (r[1] + runs[rid + 1][0]) / 2)
         n = max(1, round((vb - va) * FPS)); vb = va + n / FPS
+        if g[0] in GSRC:
+            tw_ = take_words[bl["take"]]; sw = tw_[ref(tw_, GSRC[g[0]])]
+            s0_ = sw["start"] - (W[g[0]]["s"] - va) - 0.15
+            m = mapa_trecho(bl["take"], va, vb, s0_, min(s0_ + (vb - va) * 1.8, tw_[bl["src"][1]]["end"] + 0.25))
         ts = list(np.arange(va, vb, PASSO)) + [vb]
         if len(ts) > 2 and ts[-1] - ts[-2] < PASSO / 2: ts.pop(-2)
-        yv = [f_map(m, t) for t in ts]
-        # suaviza; segue o alinhamento com velocidade limitada; se atrasar/adiantar > DERIVA, faz um jump cut
-        yv = list(np.convolve(np.pad(yv, 1, mode="edge"), [0.25, 0.5, 0.25], mode="valid")) if len(yv) > 2 else yv
-        segs, cur = [], [(ts[0], max(0.0, yv[0]))]
-        for t, y in zip(ts[1:], yv[1:]):
+        ts = np.array(ts)
+        yv = np.array([f_map(m, t) for t in ts])
+        if len(yv) > 2: yv = np.convolve(np.pad(yv, 1, mode="edge"), [0.25, 0.5, 0.25], mode="valid")
+        # 09/11 "velocidade correta": o vídeo fica perto da velocidade real e a VOZ se ajusta (sem mudar o tom)
+        dvo = np.diff(ts); dsrc = np.maximum(np.diff(yv), 0.01)
+        amax = np.full(len(dvo), A_MAX); rmin_k = np.full(len(dvo) + 1, R_MIN)
+        for rr in RITMO:  # trechos em que a voz não deve acelerar (fala fica embolada); o vídeo desacelera
+            sel = (ts[:-1] + dvo / 2 >= rr[0] - 0.1) & (ts[:-1] + dvo / 2 <= rr[1] + 0.1)
+            amax[sel] = rr[2]; rmin_k[np.r_[sel, False] | np.r_[False, sel]] = rr[3]
+        tempo = dvo / np.clip(dsrc, dvo / amax, dvo / A_MIN)          # aceleração da voz em cada passo
+        for _ in range(2):
+            if len(tempo) > 2: tempo = np.convolve(np.pad(tempo, 1, mode="edge"), [0.25, 0.5, 0.25], mode="valid")
+        u = np.r_[0, np.cumsum(dvo / tempo)]
+        n = max(1, round(u[-1] * FPS)); u *= (n / FPS) / u[-1]
+        AUDIO.append(dict(out_in=round(t_out, 4), frames=n, mapa=[(round(float(x), 5), round(float(y), 5)) for x, y in zip(u, ts)]))
+        # vídeo: segue o alinhamento no tempo de saída u; velocidade limitada; se sair > DERIVA, jump cut
+        segs, cur = [], [(u[0], max(0.0, yv[0]))]
+        for t, y, rm in zip(u[1:], yv[1:], rmin_k[1:]):
             dv = t - cur[-1][0]
-            yc = cur[-1][1] + min(max((y - cur[-1][1]) / dv, R_MIN), R_MAX) * dv
-            if abs(yc - y) > DERIVA and t < ts[-1] - 0.4 and t - cur[0][0] >= 0.4:
-                cur.append((t, yc)); segs.append(cur); cur = [(t, y)]
+            yc = cur[-1][1] + min(max((y - cur[-1][1]) / dv, rm), R_MAX) * dv
+            if abs(yc - y) > DERIVA and t < u[-1] - 0.4 and t - cur[0][0] >= 0.4:
+                tq = round(t * FPS) / FPS  # corte no quadro
+                cur.append((tq, yc)); segs.append(cur); cur = [(tq, y)]
             else:
                 cur.append((t, yc))
         segs.append(cur)
@@ -277,20 +306,20 @@ for bi, bl in enumerate(blocos):
             zcrop = clips[-1]["punch"] if clips and clips[-1]["block"] == bl["nome"] else 1.0
             punch = 1.10
         if bl["fixo"]: punch, zoom, zcrop = bl["fixo"], False, bl["fixo"]
-        t_seg = t_out
         for k, pts in enumerate(segs):
-            nk = round((pts[-1][0] - pts[0][0]) * FPS)
-            clip = dict(take=bl["take"], vo_in=round(pts[0][0], 4), vo_out=round(pts[-1][0], 4), out_in=round(t_seg, 4),
-                        out_out=round(t_seg + nk / FPS, 4), frames=nk, block=bl["nome"], punch=punch,
+            f0, f1 = round(pts[0][0] * FPS), round(pts[-1][0] * FPS)
+            if f1 <= f0: continue
+            clip = dict(take=bl["take"], out_in=round(t_out + f0 / FPS, 4), out_out=round(t_out + f1 / FPS, 4),
+                        frames=f1 - f0, block=bl["nome"], punch=punch,
                         burn=bool(bl["burn"] and si == 0 and bi > 0 and k == 0), zoom=bool(zoom and k == 0),
                         zoom_ate=round(t_out + n / FPS, 4), crop=crop_for(bl["take"], zcrop if zoom else punch),
                         src_in=round(pts[0][1], 4), src_out=round(pts[-1][1], 4),
                         pecas=[(round(p[0] - pts[0][0], 4), round(p[1] - pts[0][1], 4)) for p in pts],
                         last_text=W[g[-1]]["text"] if k == len(segs) - 1 else "", jump=k > 0)
-            clips.append(clip); t_seg = clip["out_out"]
+            clips.append(clip)
         for i in g:
-            out_words.append(dict(text=W[i]["text"], start=round(max(W[i]["s"], va) - va + t_out, 3),
-                                  end=round(min(W[i]["e"], vb) - va + t_out, 3), type="word"))
+            out_words.append(dict(text=W[i]["text"], start=round(t_out + float(np.interp(max(W[i]["s"], va), ts, u)), 3),
+                                  end=round(t_out + float(np.interp(min(W[i]["e"], vb), ts, u)), 3), type="word"))
         t_out = round(t_out + n / FPS, 4)
 
 for k, c in enumerate(clips):
@@ -299,7 +328,7 @@ for k, c in enumerate(clips):
           f"vel {min(rs):.2f}-{max(rs):.2f} p={c['punch']} z={int(c['zoom'])} b={int(c['burn'])} j={int(c['jump'])} | "
           + " ".join(w["text"] for w in out_words if c["out_in"] - 1e-3 <= w["start"] < c["out_out"]))
 print(f"duração final {t_out:.2f}s")
-json.dump(dict(clips=clips, duration=round(t_out, 3)), open(caminho("assets", "edl.json"), "w"), indent=1, ensure_ascii=False)
+json.dump(dict(clips=clips, audio=AUDIO, duration=round(t_out, 3)), open(caminho("assets", "edl.json"), "w"), indent=1, ensure_ascii=False)
 json.dump(dict(words=out_words, language="pt"), open(caminho("assets", "transcript.json"), "w"), indent=1, ensure_ascii=False)
 if SO_PLANO: sys.exit(0)
 
@@ -360,19 +389,51 @@ with ThreadPoolExecutor(2) as ex:
 lst = os.path.join(TMP, "list.txt")
 open(lst, "w").write("".join(f"file '{o}'\n" for o in outs))
 
-# ---------- 4. áudio: trechos da locução com as mesmas durações (sincronia exata) ----------
+# ---------- 4. áudio: a voz é esticada/encolhida (WSOLA, mesmo tom) para caber no tempo da imagem ----------
+from scipy.signal import decimate
+
+
+def wsola(x, mapa, n_out):
+    """mapa: [(t_saida, t_entrada)] em s. Quadros de 32 ms, salto de 16 ms, busca de ±5 ms pela melhor emenda."""
+    N, Hs, TOL = 1536, 768, 240
+    win = np.hanning(N); mu = np.array([p[0] for p in mapa]); mv = np.array([p[1] for p in mapa])
+    y = np.zeros(n_out + N); wsum = np.zeros(n_out + N)
+    prev = None
+    for k in range(0, n_out, Hs):
+        c = int(round(np.interp((k + N / 2) / SR, mu, mv) * SR)) - N // 2
+        if prev is not None:
+            nat = prev + Hs
+            lo, hi = max(0, c - TOL), min(len(x) - N, c + TOL)
+            if hi > lo and 0 <= nat <= len(x) - N:
+                ref_ = x[nat:nat + N:6]; seg_ = x[lo:hi + N:6]
+                cc = np.correlate(seg_, ref_, mode="valid")
+                c = lo + int(np.argmax(cc)) * 6
+        c = min(max(c, 0), len(x) - N)
+        y[k:k + N] += x[c:c + N] * win; wsum[k:k + N] += win
+        prev = c
+    return (y / np.maximum(wsum, 1e-3))[:n_out]
+
+
 partes = []
-for c in clips:
-    n = int(round(c["frames"] / FPS * SR)); i0 = int(round(c["vo_in"] * SR))
-    seg = vo_x[i0:i0 + n]
-    if len(seg) < n: seg = np.pad(seg, (0, n - len(seg)))
-    f = int(0.012 * SR); seg = seg.copy(); seg[:f] *= np.linspace(0, 1, f); seg[-f:] *= np.linspace(1, 0, f)
+for g_ in AUDIO:
+    n = int(round(g_["frames"] / FPS * SR))
+    seg = wsola(vo_x, g_["mapa"], n)
+    f = int(0.012 * SR); seg[:f] *= np.linspace(0, 1, f); seg[-f:] *= np.linspace(1, 0, f)
     partes.append(seg)
 voz = np.concatenate(partes)
 sf.write(caminho("assets", "voice_vo_raw.wav"), voz, SR, subtype="PCM_16")
 # tratamento leve: a locução já é limpa e de perto; conserta picos estourados (adeclip), graves, chiado e uniformidade
-cadeia = ("adeclip,highpass=f=80:poles=2,deesser=i=0.3,equalizer=f=3000:t=q:w=1.2:g=1.5,"
-          "acompressor=threshold=-22dB:ratio=2.5:attack=8:release=120:makeup=2,loudnorm=I=-16:TP=-1.5:LRA=7")
+RNN = os.environ.get("RNNOISE_MODEL") or os.path.expanduser("~/tools/models/sh.rnnn")
+# 09/11 "reduz os ruídos, isola a voz, retira o barulho do fundo": RNNoise cheio + redução espectral leve +
+# expansor nas pausas; depois presença, compressão e volume.
+cadeia = ("adeclip,highpass=f=90:poles=2,lowpass=f=12500,"
+          f"arnndn=m='{RNN}':mix=1,afftdn=nr=12:nf=-60:tn=1,"
+          "loudnorm=I=-20:TP=-3:LRA=11:linear=true,"
+          "deesser=i=0.35,equalizer=f=250:t=q:w=1.2:g=-1.5,equalizer=f=3000:t=q:w=1.2:g=2,"
+          "acompressor=threshold=-24dB:ratio=3:attack=6:release=120:makeup=3,"
+          # expansor DEPOIS da compressão: as pausas ficam realmente quietas (o compressor levantava o fundo)
+          "agate=threshold=0.035:ratio=4:range=0.03:attack=3:release=160:knee=3,"
+          "loudnorm=I=-15:TP=-1.5:LRA=6")
 subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", caminho("assets", "voice_vo_raw.wav"),
                 "-af", cadeia, "-ar", str(SR), "-c:a", "pcm_s16le", caminho("assets", "voice.wav")], check=True)
 subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", lst,

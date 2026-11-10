@@ -3,7 +3,7 @@
 (edl.json) e compara com a locução. Atraso perto de 0 ms = boca no tempo do som."""
 import json, sys, numpy as np, soundfile as sf
 from plano import caminho
-E = json.load(open(caminho("assets", "edl.json")))["clips"]
+EDL = json.load(open(caminho("assets", "edl.json"))); E = EDL["clips"]
 vo, _ = sf.read(caminho("assets", "voice_vo_raw.wav")) if len(sys.argv) < 2 else sf.read(sys.argv[1])
 
 
@@ -13,6 +13,14 @@ def logenv(x, hop):
 
 envS = {t: logenv(sf.read(caminho("assets", f"src16_{t}.wav"))[0], 160) for t in {c["take"] for c in E}}
 envV = logenv(vo, 480)
+if "audio" in EDL:  # simula a voz no tempo de saída pelo mapa (não precisa renderizar)
+    ev = logenv(sf.read(caminho("assets", "vo_emendada.wav"))[0], 480)
+    envV = np.full(int(round(EDL["duration"] * 100)), np.log(1e-4))
+    for g in EDL["audio"]:
+        mp = np.array(g["mapa"]); k0 = int(round(g["out_in"] * 100))
+        for k in range(k0, min(k0 + int(round(g["frames"] / 30 * 100)), len(envV))):
+            j = int(np.interp(k / 100 - g["out_in"], mp[:, 0], mp[:, 1]) * 100)
+            if 0 <= j < len(ev): envV[k] = ev[j]
 warp = np.full(len(envV), np.nan)
 for c in E:
     p = np.array(c["pecas"])
