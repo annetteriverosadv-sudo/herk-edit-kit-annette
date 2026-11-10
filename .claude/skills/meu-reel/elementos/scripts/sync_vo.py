@@ -57,6 +57,8 @@ def ref(ws, r, a0=0):
 vo_x, sr = sf.read(caminho(L["arquivo"]), dtype="float64")
 if vo_x.ndim > 1: vo_x = vo_x.mean(1)
 assert sr == SR, "converta a locução para 48 kHz mono"
+if L.get("inicio"):  # ruído antes da primeira palavra (celular sendo mexido, respiração): silencia
+    vo_x[:int(L["inicio"] * SR)] = 0
 W = []
 for tr in L["transcricao"]:   # lista de {json, de, ate}: pedaços de transcrição (para corrigir tempos ruins)
     d = json.load(open(caminho(tr["json"])))
@@ -426,12 +428,14 @@ sf.write(caminho("assets", "voice_vo_raw.wav"), voz, SR, subtype="PCM_16")
 RNN = os.environ.get("RNNOISE_MODEL") or os.path.expanduser("~/tools/models/sh.rnnn")
 # 09/11 "reduz os ruídos, isola a voz, retira o barulho do fundo": RNNoise cheio + redução espectral leve +
 # expansor nas pausas; depois presença, compressão e volume.
-cadeia = ("adeclip,highpass=f=90:poles=2,lowpass=f=12500,"
-          f"arnndn=m='{RNN}':mix=1,afftdn=nr=12:nf=-60:tn=1,"
+# zumbido da locução (motor/ventilador): frequências medidas nos silêncios dela -> "zumbido" no plano
+notch = "".join(f"equalizer=f={hz}:t=h:w={4 if hz < 80 else 6}:g={-30 if k == 0 else -15}," for k, hz in enumerate(L.get("zumbido", [])))
+# 10/11 "retire os ruídos e deixe harmonioso": sem afftdn (comia o "ou" de "ou menos"); RNNoise cheio,
+# presença suave, agudos amaciados, compressão e expansor depois dela (pausas quietas)
+cadeia = (f"adeclip,highpass=f=85:poles=2,{notch}arnndn=m='{RNN}':mix=1,"
           "loudnorm=I=-20:TP=-3:LRA=11:linear=true,"
-          "deesser=i=0.35,equalizer=f=250:t=q:w=1.2:g=-1.5,equalizer=f=3000:t=q:w=1.2:g=2,"
-          "acompressor=threshold=-24dB:ratio=3:attack=6:release=120:makeup=3,"
-          # expansor DEPOIS da compressão: as pausas ficam realmente quietas (o compressor levantava o fundo)
+          "deesser=i=0.35,equalizer=f=200:t=q:w=1:g=-1,equalizer=f=3000:t=q:w=1.2:g=2,highshelf=f=9000:g=-1.5,"
+          "acompressor=threshold=-24dB:ratio=3:attack=6:release=130:makeup=3,"
           "agate=threshold=0.035:ratio=4:range=0.03:attack=3:release=160:knee=3,"
           "loudnorm=I=-15:TP=-1.5:LRA=6")
 subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", caminho("assets", "voice_vo_raw.wav"),

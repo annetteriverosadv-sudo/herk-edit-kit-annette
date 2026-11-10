@@ -56,7 +56,8 @@ Ela não programa: antes de cada passo, diga em **uma frase simples** o que vai 
 Se ela mandar um áudio gravado à parte (ex.: WhatsApp), ele vira a voz do reel:
 1. Converta para 48 kHz mono em `source/vo/vo.wav` e transcreva com o Whisper (confira números e termos jurídicos
    em trechos curtos; corrija tempos ruins transcrevendo de novo só aquele trecho).
-2. Configure `"locucao"` no plano (arquivo, pedaços de transcrição, correções, emendas, blocos, planos, aproximações)
+2. Meça o zumbido nos silêncios da locução (espectro) e configure `"locucao"` no plano (arquivo, inicio, zumbido,
+   pedaços de transcrição, correções, emendas, blocos, planos, aproximações, ritmo)
    e rode `python3 scripts/sync_vo.py --plano` para ver os trechos; depois sem `--plano` para renderizar.
 3. `python3 scripts/conferir_sync.py`: atraso da boca por bloco perto de 0 ms; janelas acima de 80 ms, ajuste.
 4. Atualize títulos/listas/destaques do plano para as palavras da locução; depois gen_comp, make_audio e render.
