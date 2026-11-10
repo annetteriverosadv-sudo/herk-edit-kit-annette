@@ -51,6 +51,16 @@ Ela não programa: antes de cada passo, diga em **uma frase simples** o que vai 
 11. **Correções.** Toda correção dela vira regra nova, com data, na seção "Correções" do [DESIGN.md](DESIGN.md)
     (e a regra antiga é ajustada). Se for sobre o processo, ajuste esta skill também.
 
+## Quando o áudio da gravação não presta: locução à parte
+
+Se ela mandar um áudio gravado à parte (ex.: WhatsApp), ele vira a voz do reel:
+1. Converta para 48 kHz mono em `source/vo/vo.wav` e transcreva com o Whisper (confira números e termos jurídicos
+   em trechos curtos; corrija tempos ruins transcrevendo de novo só aquele trecho).
+2. Configure `"locucao"` no plano (arquivo, pedaços de transcrição, correções, emendas, blocos, planos, aproximações)
+   e rode `python3 scripts/sync_vo.py --plano` para ver os trechos; depois sem `--plano` para renderizar.
+3. `python3 scripts/conferir_sync.py`: atraso da boca por bloco perto de 0 ms; janelas acima de 80 ms, ajuste.
+4. Atualize títulos/listas/destaques do plano para as palavras da locução; depois gen_comp, make_audio e render.
+
 ## Elementos — quando usar cada um
 
 | Elemento | Onde | Quando usar |

@@ -49,7 +49,8 @@ for a, b in RANGES:
 DEST = set()
 for a_, b_ in PLANO.get("destaques", []):
     DEST.update(range(p(a_), p(b_) + 1))
-DEST_RANGES = {p(a_): p(b_) for a_, b_ in PLANO.get("destaques", [])}
+DEST_RANGES = {p(a_): p(b_) for a_, b_ in PLANO.get("destaques", []) + PLANO.get("juntos", [])}  # juntos: não divide entre blocos, sem destaque
+JCONT = {k for a_, b_ in DEST_RANGES.items() for k in range(a_ + 1, b_ + 1)}  # continuação de um grupo que não se divide
 groups, cur = [], []
 for i, w in enumerate(W):
     if i in covered:
@@ -57,7 +58,7 @@ for i, w in enumerate(W):
         continue
     if cur and i in DEST_RANGES and len(cur) + DEST_RANGES[i] - i + 1 > 4:  # palavra-chave não se divide
         groups.append(cur); cur = []
-    if cur and (w["start"] - W[cur[-1]]["end"] > 0.35 or len(cur) >= 4
+    if cur and i not in JCONT and (w["start"] - W[cur[-1]]["end"] > 0.35 or len(cur) >= 4
                 or sum(len(W[j]["text"]) for j in cur) + len(w["text"]) > 24):
         groups.append(cur); cur = []
     cur.append(i)
@@ -123,7 +124,7 @@ for k, (g, (st, en)) in enumerate(zip(groups, gtimes)):
     cap_js.append(f"tl.set('#cg{k}',{{opacity:0,visibility:'hidden'}},{en});")
 
 burns = [c["out_in"] for c in EDL["clips"] if c.get("burn")]
-ZOOMS = [(c["out_in"], c["out_out"]) for c in EDL["clips"] if c.get("zoom")]
+ZOOMS = [(c["out_in"], c.get("zoom_ate", c["out_out"])) for c in EDL["clips"] if c.get("zoom")]
 json.dump(dict(burns=burns), open(caminho("assets", "transitions.json"), "w"))
 
 
