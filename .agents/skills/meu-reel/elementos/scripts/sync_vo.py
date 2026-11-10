@@ -29,8 +29,8 @@ FACES = json.load(open(caminho("assets", "faces.json")))
 FACE_TARGET, EYE_TARGET = 0.175, 0.28
 PAUSA, PRE, POST = 0.30, 0.10, 0.14
 FPS, SR = 30, 48000
-R_MIN, R_MAX = 0.7, 1.75          # velocidade do vídeo permitida
-A_MIN, A_MAX = 0.72, 1.35          # aceleração permitida da voz (WSOLA, sem mudar o tom)
+R_MIN, R_MAX = 0.65, 1.6          # velocidade do vídeo permitida
+A_MIN, A_MAX = 1.0, 1.0           # 10/11: voz intacta (esticar a voz deixou "estranho", embolou palavras); só a imagem se ajusta
 DERIVA = 0.06                     # atraso/adiantamento máximo da boca antes de um jump cut (s)
 SO_PLANO = "--plano" in sys.argv
 
@@ -209,6 +209,17 @@ for bv, bp in zip(L["blocos"], PLANO["blocos"]):
     sa = ref(tw, bp["de"]); sb = ref(tw, bp["ate"], sa)
     blocos.append(dict(nome=bp["nome"], take=bp["take"], vo=(a, b), src=(sa, sb),
                        burn=bp.get("burn", True), fixo=bp.get("plano")))
+
+
+# um trecho de fala nunca pode pertencer a dois blocos (o áudio entraria duas vezes: "Segundo, segundo")
+for bl0, bl1 in zip(blocos, blocos[1:]):
+    wa, wb = W[bl0["vo"][1]], W[bl1["vo"][0]]
+    if wa["run"] == wb["run"]:
+        r = runs[wa["run"]]; t = max(wa["e"], wb["start"] - 0.03)
+        runs[wa["run"]:wa["run"] + 1] = [[r[0], t], [t, r[1]]]
+        for w in W:
+            if w["run"] > wa["run"] or (w["run"] == wa["run"] and (w["start"] + w["end"]) / 2 > t): w["run"] += 1
+        print(f"trecho dividido entre '{bl0['nome']}' e '{bl1['nome']}' em {t:.2f}s")
 
 
 def mapa_bloco(bl):
@@ -429,7 +440,12 @@ def wsola(x, mapa, n_out):
 partes = []
 for g_ in AUDIO:
     n = int(round(g_["frames"] / FPS * SR))
-    seg = wsola(vo_x, g_["mapa"], n)
+    mp = np.array(g_["mapa"]); sl = np.diff(mp[:, 1]) / np.diff(mp[:, 0])
+    if np.all(np.abs(sl - 1) < 1e-3):  # voz no tempo original: copia direto (nada de esticar)
+        i0 = int(round(mp[0, 1] * SR)); seg = vo_x[i0:i0 + n].copy()
+        if len(seg) < n: seg = np.pad(seg, (0, n - len(seg)))
+    else:
+        seg = wsola(vo_x, g_["mapa"], n)
     f = int(0.012 * SR); seg[:f] *= np.linspace(0, 1, f); seg[-f:] *= np.linspace(1, 0, f)
     partes.append(seg)
 voz = np.concatenate(partes)
