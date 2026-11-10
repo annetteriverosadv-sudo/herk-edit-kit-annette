@@ -249,6 +249,8 @@ def crop_for(take, punch):
 VPL = {ref(W, z["em"]): z["plano"] for z in L.get("planos", [])}
 # trecho da locução que começa noutra palavra do vídeo (ex.: locução "cai para…", vídeo "essas 42 horas caem para…")
 GSRC = {ref(W, z["em"]): z["src"] for z in L.get("inicio_no_video", [])}
+# fim de trecho preso a uma palavra do vídeo (corta antes de piscar/engolir na pausa da gravação)
+FIMV = {ref(W, z["em"]): z for z in L.get("fim_no_video", [])}
 RITMO = [(W[ref(W, z["de"])]["s"], W[ref(W, z["ate"])]["e"], z.get("voz_max", 1.1), z.get("video_min", 0.55))
          for z in L.get("ritmo", [])]
 VZM = {ref(W, z["em"]) for z in L.get("aproximacoes", [])}
@@ -288,12 +290,20 @@ for bi, bl in enumerate(blocos):
         u = np.r_[0, np.cumsum(dvo / tempo)]
         n = max(1, round(u[-1] * FPS)); u *= (n / FPS) / u[-1]
         AUDIO.append(dict(out_in=round(t_out, 4), frames=n, mapa=[(round(float(x), 5), round(float(y), 5)) for x, y in zip(u, ts)]))
+        # fim preso a um instante do vídeo (ex.: antes de fechar os olhos/engolir): a imagem desacelera até quase parar
+        preso = np.zeros(len(yv), bool)
+        for gi in g:
+            if gi in FIMV:
+                z = FIMV[gi]; tw_ = take_words[bl["take"]]
+                lim = z["src_ate"] if "src_ate" in z else tw_[ref(tw_, z["src"])]["end"] + z.get("folga", 0.08)
+                preso |= yv > lim; yv = np.minimum(yv, lim)
+                rmin_k = np.where(np.r_[False, preso[1:]], 0.25, rmin_k)
         # vídeo: segue o alinhamento no tempo de saída u; velocidade limitada; se sair > DERIVA, jump cut
         segs, cur = [], [(u[0], max(0.0, yv[0]))]
         for t, y, rm in zip(u[1:], yv[1:], rmin_k[1:]):
             dv = t - cur[-1][0]
             yc = cur[-1][1] + min(max((y - cur[-1][1]) / dv, rm), R_MAX) * dv
-            if abs(yc - y) > DERIVA and t < u[-1] - 0.4 and t - cur[0][0] >= 0.4:
+            if abs(yc - y) > DERIVA and t < u[-1] - 0.4 and t - cur[0][0] >= 0.4 and not preso[len(cur)]:
                 tq = round(t * FPS) / FPS  # corte no quadro
                 cur.append((tq, yc)); segs.append(cur); cur = [(tq, y)]
             else:
