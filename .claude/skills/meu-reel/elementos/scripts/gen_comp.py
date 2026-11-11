@@ -50,7 +50,8 @@ DEST = set()
 for a_, b_ in PLANO.get("destaques", []):
     DEST.update(range(p(a_), p(b_) + 1))
 DEST_RANGES = {p(a_): p(b_) for a_, b_ in PLANO.get("destaques", []) + PLANO.get("juntos", [])}  # juntos: não divide entre blocos, sem destaque
-JCONT = {k for a_, b_ in DEST_RANGES.items() for k in range(a_ + 1, b_ + 1)}  # continuação de um grupo que não se divide
+JCONT = {k for a_, b_ in DEST_RANGES.items() for k in range(a_ + 1, b_ + 1)}
+INNER = {k for a_, b_ in DEST_RANGES.items() for k in range(a_, b_)}  # vírgula dentro de um grupo que não se divide  # continuação de um grupo que não se divide
 groups, cur = [], []
 for i, w in enumerate(W):
     if i in covered:
@@ -62,7 +63,7 @@ for i, w in enumerate(W):
                 or sum(len(W[j]["text"]) for j in cur) + len(w["text"]) > 24):
         groups.append(cur); cur = []
     cur.append(i)
-    if w["text"][-1:] in ".?!,":
+    if w["text"][-1:] in ".?!," and i not in INNER:
         groups.append(cur); cur = []
 if cur: groups.append(cur)
 # merge single-word groups into a neighbour when it stays short
@@ -124,8 +125,22 @@ for k, (g, (st, en)) in enumerate(zip(groups, gtimes)):
     cap_js.append(f"tl.set('#cg{k}',{{opacity:0,visibility:'hidden'}},{en});")
 
 burns = [c["out_in"] for c in EDL["clips"] if c.get("burn")]
+# transições por bloco (pedido de 11/11/2026: film burn só uma vez; desfoque, chicote e corte seco)
+TRANS = {b["nome"]: b.get("transicao", "burn" if b.get("burn", True) else "seco") for b in PLANO["blocos"]}
+BSTART, _seen = [], set()
+for c in EDL["clips"]:
+    if c["block"] not in _seen:
+        _seen.add(c["block"]); BSTART.append((c["out_in"], TRANS.get(c["block"], "seco")))
+BSTART = BSTART[1:]
+WHIPS = [bt for bt, tr in BSTART if tr == "whip"]
+BLURS = [bt for bt, tr in BSTART if tr == "blur"]
+CLIP_ENDS = sorted(c["out_out"] for c in EDL["clips"])
+def clip_end(tm):
+    return next((e for e in CLIP_ENDS if e > tm + 1e-3), VID)
+PUNCH = [(t(p(x["em"])) - 0.04, x.get("escala", 1.08)) for x in PLANO.get("punches", [])]
+LENTOS = [(t(p(x["de"])) - 0.04, W[p(x["ate"])]["end"], x.get("escala", 1.05)) for x in PLANO.get("lentos", [])]
 ZOOMS = [(c["out_in"], c.get("zoom_ate", c["out_out"])) for c in EDL["clips"] if c.get("zoom")]
-json.dump(dict(burns=burns), open(caminho("assets", "transitions.json"), "w"))
+json.dump(dict(burns=sorted(burns + WHIPS + BLURS), whips=WHIPS, blurs=BLURS), open(caminho("assets", "transitions.json"), "w"))
 
 
 def items_html(prefix, items):
@@ -194,7 +209,7 @@ html,body{{margin:0;width:1080px;height:1920px;overflow:hidden;background:{PRETO
 hook_html = ""
 if G:
     hook_end = fim_de(HOOK[1]) - 0.03
-    linhas = "".join(f'<div class="{ {"serifa": "h2", "fina": "h3"}.get(l.get("estilo"), "h1") }" id="hq{n + 1}">{esc(l["texto"])}</div>'
+    linhas = "".join(f'<div class="{ {"serifa": "h2", "fina": "h3"}.get(l.get("estilo"), "h1") }" id="hq{n + 1}"' + (f' style="font-size:{l["px"]}px"' if l.get("px") else "") + f'>{esc(l["texto"])}</div>'
                      for n, l in enumerate(G["linhas"]))
     hook_html = f'<div id="hook" class="clip" data-start="0" data-duration="{round(hook_end, 3)}" data-track-index="4">{linhas}</div>'
 tit_html = "".join(
@@ -221,7 +236,7 @@ for n, x in enumerate(LISTAS):
 
 body = f"""
 <div id="reel" data-composition-id="reel" data-start="0" data-duration="{DUR}" data-width="1080" data-height="1920">
- <div id="vwrap"><video id="v" src="assets/cut.mp4" muted playsinline data-start="0" data-duration="{VID}" data-track-index="0"></video></div>
+ <div id="vwrap"><video id="v" src="assets/{'cut_fx.mp4' if os.path.exists(caminho('assets', 'cut_fx.mp4')) else 'cut.mp4'}" muted playsinline data-start="0" data-duration="{VID}" data-track-index="0"></video></div>
  <audio id="voice" src="assets/mix.wav" data-start="0" data-duration="{VID}" data-track-index="1" data-volume="1"></audio>
  {''.join(f'<div id="fb{n}" class="burn clip" data-start="{max(0, round(bt - 0.28, 3))}" data-duration="0.62" data-track-index="3"><div class="bi"></div></div>' for n, bt in enumerate(burns))}
  {hook_html}
@@ -246,6 +261,21 @@ for n, lt in enumerate(LEAKS):
 for a_, b_ in ZOOMS:  # aproximação suave (punch-in) pedida no plano
     js.append(f"tl.fromTo('#vwrap',{{scale:1}},{{scale:1.12,duration:0.4,ease:'power2.out',immediateRender:false}},{a_:.3f});")
     js.append(f"tl.set('#vwrap',{{scale:1}},{b_:.3f});")
+for a_, s_ in PUNCH:  # punch-in seco no meio do trecho (troca de ideia)
+    js.append(f"tl.set('#vwrap',{{scale:{s_}}},{a_:.3f});")
+    js.append(f"tl.set('#vwrap',{{scale:1}},{clip_end(a_):.3f});")
+for a_, b_, s_ in LENTOS:  # aproximação progressiva e volta gradual
+    ce = clip_end(a_)
+    b2 = min(b_, ce)
+    js.append(f"tl.fromTo('#vwrap',{{scale:1}},{{scale:{s_},duration:{b2 - a_:.3f},ease:'sine.inOut',immediateRender:false}},{a_:.3f});")
+    if ce - b2 > 0.55:
+        js.append(f"tl.to('#vwrap',{{scale:1,duration:0.5,ease:'sine.inOut'}},{b2 + 0.01:.3f});")
+    js.append(f"tl.set('#vwrap',{{scale:1}},{ce:.3f});")
+for bt in WHIPS:  # chicote discreto: deslocamento lateral curto (o borrão de movimento vem do fx_transicoes.py)
+    js.append(f"tl.fromTo('#vwrap',{{x:0,scale:1}},{{x:-70,scale:1.06,duration:0.08,ease:'power2.in',immediateRender:false}},{bt - 0.08:.3f});")
+    js.append(f"tl.fromTo('#vwrap',{{x:70,scale:1.06}},{{x:0,scale:1,duration:0.16,ease:'power3.out',immediateRender:false}},{bt:.3f});")
+for bt in BLURS:  # desfoque: leve respiro de escala junto com o desfoque do fx_transicoes.py
+    js.append(f"tl.fromTo('#vwrap',{{scale:1.04}},{{scale:1,duration:0.3,ease:'sine.out',immediateRender:false}},{bt:.3f});")
 if G:
     for n, l in enumerate(G["linhas"]):
         em = p(l["em"])

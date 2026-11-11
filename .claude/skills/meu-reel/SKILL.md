@@ -36,7 +36,8 @@ Ela não programa: antes de cada passo, diga em **uma frase simples** o que vai 
 5. **Cortes de erro — mostrar antes de aplicar.** Liste começos falsos, "vai!", "ok", "pode iniciar", voz de
    outra pessoa e repetições. Monte `review/cortes-de-erro.mp4` (cada trecho com rótulo "CORTE n — SERÁ REMOVIDO"),
    envie e **espere ela aprovar**. Pausas ≥ 0,30 s podem ser cortadas sem perguntar.
-6. **Cortar.** `python3 scripts/edl.py` e `python3 scripts/render_cut.py` (usa os originais 4K, limpa a voz).
+6. **Cortar.** `python3 scripts/edl.py`, `python3 scripts/render_cut.py` (usa os originais 4K, limpa a voz) e
+   `python3 scripts/fx_transicoes.py` (desfoque/chicote nas trocas de bloco + correção leve de cor → `assets/cut_fx.mp4`).
    Confira uma folha de contato: olhos na mesma altura em todos os trechos.
 7. **Legenda e animações.** `python3 scripts/gen_comp.py`, depois `npx hyperframes lint` (0 erros).
    Legenda palavra por palavra: Montserrat Bold (700), letras normais, caixa bordô na palavra falada.
@@ -44,7 +45,7 @@ Ela não programa: antes de cada passo, diga em **uma frase simples** o que vai 
    lista digitada, destaques em bordô, light leak, correção de luz por gravação.
 8. **Som.** `python3 scripts/make_audio.py` (voz + transições e toques, **sem música de fundo**; mixagem a −10 LUFS).
    Trilha só se ela pedir naquele vídeo: `"trilha": true` no plano.
-9. **Rascunho antes de polir.** `npx hyperframes render --quality draft --output renders/rascunho-v1.mp4`.
+9. **Rascunho antes de polir.** `npx hyperframes render --sdr --quality draft --output renders/rascunho-v1.mp4`.
    Confira quadros-chave, envie e **espere a aprovação** dela.
 10. **Polir.** `--quality high`. Meça o volume no arquivo final (−10 LUFS), confira o film burn e o último quadro,
     registre em `VERIFY.md` e envie. Diga sempre que o som foi conferido só por medição.
@@ -71,7 +72,7 @@ Se ela mandar um áudio gravado à parte (ex.: WhatsApp), ele vira a voz do reel
 | Som de transição (sopro + tom) | `sons.py` `sopro()` + `tom()` | Só nas trocas de assunto, junto com o film burn. Sempre baixo |
 | Toque abafado | `sons.py` `toque()` | Quando entra a palavra grande de um título |
 | Cliques secos | `sons.py` `clique()` | Um por item de lista, alternando o tom |
-| Film burn singelo | `gen_comp.py` (classe `.burn`) | Em cada troca de bloco do plano — nunca em todo corte |
+| Film burn singelo | `gen_comp.py` (classe `.burn`) | No máximo 1 por vídeo (correção de 11/11/2026); nas outras trocas, `"transicao"`: seco, blur ou whip |
 | Scripts | [elementos/scripts](elementos/scripts) | Em todo vídeo, na ordem acima |
 
 Para ouvir os sons soltos (ou usar no CapCut): `python3 elementos/audio/sons.py <pasta> 60`.

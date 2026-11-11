@@ -69,7 +69,7 @@ salvo pedido diferente da Dra. Annette na hora.
 ## Transições
 
 - **Padrão:** corte seco ou punch-in.
-- **Film burn singelo** nas trocas de assunto (não em todo corte): brilho quente âmbar/bordô entrando pela lateral, ~0,6 s, discreto, em camada com transparência normal — substitui o flash bege (correção de 04/11/2026).
+- **Film burn singelo: só por exceção, no máximo 1 por vídeo** (correção de 11/11/2026; antes ia em toda troca de assunto): brilho quente âmbar/bordô entrando pela lateral, ~0,6 s, discreto, em camada com transparência normal — substitui o flash bege (correção de 04/11/2026).
 - **Whip/borrão de movimento** (1–2 quadros) para entrar no b-roll.
 - **Light leak vermelho→âmbar**: no máximo 2 por vídeo, só em palavra de impacto.
 - Proibido: cubo, giro, slide, glitch pesado.
@@ -135,3 +135,5 @@ Limitação: não foi possível ouvir as trilhas para dizer gênero ou batida. S
 - 2026-11-10 — Nova locução (WhatsApp) com zumbido de motor/ventilador a 55,7 Hz e harmônicos e ruído antes da primeira palavra: zumbido tirado com filtros estreitos, sem afftdn, agudos amaciados, ruído inicial silenciado. Sincronia: −30 a 0 ms por bloco.
 - 2026-11-10 — "Na primeira parte ele fecha os olhos e engole para iniciar a nova fala": fim do trecho "Entenda os três principais pontos" preso a 9,36 s da gravação (ele fecha os olhos a partir de 9,40 s). Regra: conferir o fim de cada trecho quadro a quadro.
 - 2026-11-10 — "O áudio tá estranho, não tá sincronizado, tem palavras repetidas, tem horas que fica calado": (1) um trecho de fala compartilhado entre dois blocos entrava duas vezes ("Segundo, segundo") — o sync_vo.py agora divide o trecho; (2) a voz esticada/encolhida embolava palavras ("acordo ou convenção", "ou menos") — voz volta a ficar intacta e só a imagem se ajusta. Conferência obrigatória: transcrição do áudio final x locução, palavra por palavra.
+- 2026-11-11 — Instruções de edição (benefícios com e sem contribuição): film burn deixa de ser a transição padrão — no máximo 1 por vídeo, onde agregar. Nas trocas de assunto, variar: corte seco bem feito, desfoque curto (blur dissolve, `"transicao": "blur"`), chicote discreto com borrão de movimento (`"whip"`), J/L-cut só onde houver gráfico cobrindo. Zoom com propósito: aproximação progressiva com volta gradual (`"lentos"`) e punch-in seco em troca de ideia (`"punches"`), nunca em todo corte. Correção leve de luz/cor em todo o vídeo (contraste, pele um pouco mais quente) no `fx_transicoes.py`. Gravação do iPhone em HDR (HLG): renderizar com `--sdr`.
+
