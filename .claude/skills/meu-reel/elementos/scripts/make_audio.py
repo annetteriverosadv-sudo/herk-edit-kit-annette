@@ -68,7 +68,7 @@ ALVO = float(PLANO.get("lufs", -12.0))
 g = ALVO - lufs(pre)
 for _ in range(8):
     r = subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", pre, "-af",
-                        f"pan=stereo|c0=c0|c1=c0,volume={g:.2f}dB,alimiter=limit=0.89:attack=1:release=60:level=false",
+                        f"pan=stereo|c0=c0|c1=c0,volume={g:.2f}dB,alimiter=limit=0.83:attack=1:release=60:level=false",
                         "-ar", "48000", "-c:a", "pcm_s16le", out], capture_output=True, text=True)
     if r.returncode: sys.exit(r.stderr)
     got = lufs(out)

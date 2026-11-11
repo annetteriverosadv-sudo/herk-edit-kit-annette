@@ -40,7 +40,9 @@ G = PLANO.get("gancho")
 HOOK = (0, p(G["ate"])) if G else None
 TITULOS = [dict(x, a=p(x["de"]), b=p(x["ate"])) for x in PLANO.get("titulos", [])]
 LISTAS = [dict(x, a=p(x["de"]), b=p(x["ate"])) for x in PLANO.get("listas", [])]
-RANGES = ([HOOK] if HOOK else []) + [(x["a"], x["b"]) for x in TITULOS] + [(x["a"], x["b"]) for x in LISTAS]
+TELAS = [dict(x, a=p(x["de"]), b=p(x["ate"])) for x in PLANO.get("telas", [])]
+RANGES = ([HOOK] if HOOK else []) + [(x["a"], x["b"]) for x in TITULOS] + [(x["a"], x["b"]) for x in LISTAS] \
+    + [(x["a"], x["b"]) for x in TELAS]  # correção 11/11/2026: texto de tela substitui a legenda, nada empilhado
 covered = set()
 for a, b in RANGES:
     covered.update(range(a, b + 1))
@@ -118,10 +120,7 @@ for k, (g, (st, en)) in enumerate(zip(groups, gtimes)):
         if i in DEST:  # palavra-chave: caixa bordô durante o bloco inteiro
             cap_js.append(f"tl.set('#w{i}',{{backgroundColor:'{BORDO}'}},{st:.3f});")
             continue
-        ws = max(st, t(i))
-        we = t(g[n + 1]) if n + 1 < len(g) else en
-        cap_js.append(f"tl.set('#w{i}',{{backgroundColor:'{BORDO}'}},{ws:.3f});")
-        cap_js.append(f"tl.set('#w{i}',{{backgroundColor:'rgba(142,28,36,0)'}},{we:.3f});")
+        # (correção 11/11/2026: sem caixa pulando em toda palavra — só as importantes ganham destaque)
     cap_js.append(f"tl.set('#cg{k}',{{opacity:0,visibility:'hidden'}},{en});")
 
 burns = [c["out_in"] for c in EDL["clips"] if c.get("burn")]
@@ -186,18 +185,25 @@ html,body{{margin:0;width:1080px;height:1920px;overflow:hidden;background:{PRETO
 .leak .li{{position:absolute;inset:-15%;
   background:radial-gradient(ellipse 50% 60% at 100% 35%,rgba(198,40,40,.85),rgba(198,40,40,.35) 40%,rgba(198,40,40,0) 70%),
              radial-gradient(ellipse 45% 45% at 85% 70%,rgba(255,178,92,.6),rgba(255,150,70,.2) 45%,rgba(255,150,70,0) 75%)}}
-/* textos de tela do roteiro (correção 11/11/2026) */
-.tela{{position:absolute;left:50px;right:50px;top:780px;text-align:center;z-index:13}}
-.tela .tl1{{display:inline-block;font-family:'Montserrat';font-weight:800;font-size:54px;line-height:1.2;color:#fff;
-  background:{BORDO};border-radius:14px;padding:8px 26px 10px;box-shadow:0 8px 26px rgba(0,0,0,.35)}}
-.tela .tl2{{display:inline-block;font-family:'Playfair Display';font-style:italic;font-weight:800;font-size:92px;line-height:1.1;color:{BORDO};
-  background:rgba(239,230,216,.96);border-radius:16px;padding:4px 28px 12px;margin-top:12px;box-shadow:0 8px 26px rgba(0,0,0,.3)}}
-.tela .tl1 .pt{{display:none}}
+/* textos de tela do roteiro (correção 11/11/2026: harmonioso, sem caixas, substitui a legenda) */
+.tela{{position:absolute;left:60px;right:60px;top:1060px;text-align:center;z-index:13}}
+.tela .glow{{position:absolute;left:-60px;right:-60px;top:-90px;bottom:-90px;z-index:-1;
+  background:radial-gradient(ellipse 60% 55% at 50% 50%,rgba(20,14,14,.42),rgba(20,14,14,0) 72%)}}
+.tela .tl1{{font-family:'Montserrat';font-weight:700;font-size:50px;line-height:1.2;color:#fff;letter-spacing:.5px;
+  text-shadow:0 1px 3px rgba(0,0,0,.55),0 3px 16px rgba(0,0,0,.4)}}
+.tela .fil{{width:84px;height:5px;border-radius:3px;background:{BORDO};margin:16px auto 10px}}
+.tela .tl2{{font-family:'Playfair Display';font-style:italic;font-weight:800;font-size:92px;line-height:1.08;color:#fff;
+  text-shadow:0 2px 4px rgba(0,0,0,.5),0 4px 22px rgba(0,0,0,.45)}}
+.tela .tl2 em{{font-style:italic;color:{BEGE}}}
+.tela .pl{{font-family:'Playfair Display';font-style:italic;font-weight:800;font-size:84px;line-height:1.12;color:#fff;
+  text-shadow:0 2px 4px rgba(0,0,0,.5),0 4px 22px rgba(0,0,0,.45)}}
+.tela .pl .dot{{display:inline-block;width:16px;height:16px;border-radius:50%;background:{BORDO};margin-right:22px;vertical-align:middle}}
 /* captions */
-#caps{{position:absolute;left:90px;right:90px;top:1190px;height:200px;z-index:10}}
+#caps{{position:absolute;left:90px;right:90px;top:1230px;height:200px;z-index:10}}
 .cg{{position:absolute;left:0;right:0;top:0;text-align:center;opacity:0;visibility:hidden;
-  font-family:'Montserrat';font-weight:700;font-size:58px;line-height:1.3;color:#fff;word-spacing:-10px}}
-.w{{display:inline-block;padding:0 9px 2px;border-radius:10px;background:rgba(142,28,36,0);text-shadow:{HALO}}}
+  font-family:'Montserrat';font-weight:700;font-size:56px;line-height:1.35;color:#fff;word-spacing:-8px}}
+.w{{display:inline-block;padding:0 8px 3px;border-radius:12px;background:rgba(142,28,36,0);
+  text-shadow:0 1px 3px rgba(0,0,0,.5),0 2px 14px rgba(0,0,0,.35)}}
 /* emphasis title */
 {T_IDS}{{position:absolute;left:70px;right:70px;top:1090px;text-align:center;z-index:12}}
 {T_SMALL}{{font-family:'Montserrat';font-weight:700;font-size:56px;color:#fff;text-shadow:{HALO}}}
@@ -241,16 +247,20 @@ for n, x in enumerate(LISTAS):
     lis_html += (f'<div id="l{n + 1}" class="card clip" data-start="{ls}" data-duration="{round(le - ls, 3)}" data-track-index="{7 + n}">'
                  f'<div class="head" id="l{n + 1}h">{esc(x["titulo"])}</div>{items_html(f"l{n + 1}i", [(i[0], p(i[1])) for i in x["itens"]])}{foot}</div>')
 
-TELAS = [dict(x, a=p(x["de"]), b=p(x["ate"])) for x in PLANO.get("telas", [])]
 tela_html = ""
 for n, x in enumerate(TELAS):
     ts, te = round(max(0, t(x["a"]) - 0.08), 3), fim_de(x["b"])
     if x.get("partes"):
-        l1 = '<div class="tl1" style="font-size:42px">' + "".join(f'<span class="pt" id="tp{n}_{m}">{esc(txt)}</span>' for m, (txt, _) in enumerate(x["partes"])) + "</div>"
+        inner = "".join(f'<div class="pl" id="tp{n}_{m}"><span class="dot"></span>{esc(txt)}</div>' for m, (txt, _) in enumerate(x["partes"]))
     else:
-        l1 = f'<div class="tl1" id="tl{n}a">{esc(x["linha1"])}</div>'
-    l2 = f'<div class="tl2" id="tl{n}b" style="font-size:{x.get("px2", 84)}px">{esc(x["linha2"])}</div>' if x.get("linha2") else ""
-    tela_html += f'<div id="tela{n}" class="tela clip" data-start="{ts}" data-duration="{round(te - ts, 3)}" data-track-index="{30 + n}"><div>{l1}</div>' + (f'<div>{l2}</div>' if l2 else '') + '</div>'
+        l2 = esc(x.get("linha2", ""))
+        if x.get("destaque"):
+            l2 = l2.replace(esc(x["destaque"]), f"<em>{esc(x['destaque'])}</em>")
+        inner = (f'<div class="tl1" id="tl{n}a">{esc(x["linha1"])}</div><div class="fil" id="tf{n}"></div>'
+                 + (f'<div class="tl2" id="tl{n}b" style="font-size:{x.get("px2", 92)}px">{l2}</div>' if x.get("linha2") else ""))
+    top = x.get("top")
+    sty = f' style="top:{top}px"' if top else ""
+    tela_html += f'<div id="tela{n}" class="tela clip"{sty} data-start="{ts}" data-duration="{round(te - ts, 3)}" data-track-index="{30 + n}"><div class="glow"></div>{inner}</div>'
 
 body = f"""
 <div id="reel" data-composition-id="reel" data-start="0" data-duration="{DUR}" data-width="1080" data-height="1920">
@@ -332,18 +342,18 @@ for n, x in enumerate(LISTAS):
         js.append(f"tl.to('#l{n + 1}',{{opacity:0,duration:0.15,ease:'power1.in'}},{le - 0.15:.3f});")
 for n, x in enumerate(TELAS):
     ts, te = round(max(0, t(x["a"]) - 0.08), 3), fim_de(x["b"])
+    js.append(f"tl.from('#tela{n} .glow',{{opacity:0,duration:0.3,ease:'sine.out'}},{ts:.3f});")
     if x.get("partes"):
         for m, (txt, ref) in enumerate(x["partes"]):
             tm = ts if m == 0 else t(p(ref)) - 0.04
-            js.append(f"tl.set('#tp{n}_{m}',{{display:'inline'}},{tm:.3f});")
-            js.append(f"tl.fromTo('#tp{n}_{m}',{{opacity:0}},{{opacity:1,duration:0.18,ease:'power2.out',immediateRender:false}},{tm:.3f});")
-        js.append(f"tl.from('#tela{n} .tl1',{{opacity:0,y:14,duration:0.22,ease:'power2.out'}},{ts:.3f});")
+            js.append(f"tl.from('#tp{n}_{m}',{{opacity:0,y:16,filter:'blur(10px)',duration:0.26,ease:'power2.out'}},{tm:.3f});")
     else:
-        js.append(f"tl.from('#tl{n}a',{{opacity:0,y:14,filter:'blur(10px)',duration:0.24,ease:'power2.out'}},{ts:.3f});")
+        js.append(f"tl.from('#tl{n}a',{{opacity:0,y:12,filter:'blur(8px)',duration:0.26,ease:'power2.out'}},{ts:.3f});")
+        js.append(f"tl.from('#tf{n}',{{scaleX:0,duration:0.32,ease:'power3.out'}},{ts + 0.12:.3f});")
         if x.get("linha2"):
-            js.append(f"tl.from('#tl{n}b',{ghost},{ts + 0.18:.3f});")
+            js.append(f"tl.from('#tl{n}b',{{opacity:0,scale:1.06,filter:'blur(12px)',duration:0.3,ease:'power2.out'}},{ts + 0.2:.3f});")
     if te < VID:
-        js.append(f"tl.to('#tela{n}',{{opacity:0,duration:0.18,ease:'power1.in'}},{te - 0.18:.3f});")
+        js.append(f"tl.to('#tela{n}',{{opacity:0,duration:0.2,ease:'power1.in'}},{te - 0.2:.3f});")
 js += cap_js
 js.append("window.__timelines=window.__timelines||{};window.__timelines['reel']=tl;")
 

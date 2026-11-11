@@ -62,8 +62,10 @@ def clip_job(k_c):
     # — sem isso a imagem fica lavada e acinzentada) e baixa um pouco o fundo claro com uma curva suave.
     hdr = _hdr(_orig(c["take"]))
     tm = ("zscale=tin=arib-std-b67:pin=bt2020:min=bt2020nc:t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,"
-          "tonemap=mobius:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p,"
-          "curves=master='0/0 0.5/0.47 0.85/0.80 1/0.93',") if hdr else ""
+          "tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p,"
+          "curves=master='0/0 0.25/0.24 0.5/0.52 0.8/0.80 1/0.92',eq=saturation=1.05,") if hdr else ""
+    # (2ª correção 11/11/2026: "tá muito estourado de luz" — mobius deixava cortina e rosto claros demais; hable + curva
+    #  mantém o preto do blazer firme, cortina neutra e pele natural)
     vf = (f"crop={w}:{h}:{x}:{y},scale=1080:1920:flags=lanczos,{tm}"
           f"colorchannelmixer=rr={g:.3f}:gg={g:.3f}:bb={g:.3f},"
           "unsharp=5:5:0.3:5:5:0,fps=30,setsar=1,"
