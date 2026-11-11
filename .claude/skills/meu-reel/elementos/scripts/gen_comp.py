@@ -113,12 +113,12 @@ def esc(s):
 
 cap_html, cap_js = [], []
 for k, (g, (st, en)) in enumerate(zip(groups, gtimes)):
-    spans = "".join(f'<span class="w" id="w{i}">{esc(W[i]["text"])}</span> ' for i in g)
+    spans = "".join(f'<span class="w{" k" if i in DEST else ""}" id="w{i}">{esc(W[i]["text"])}</span> ' for i in g)
     cap_html.append(f'<div class="cg" id="cg{k}">{spans.strip()}</div>')
     cap_js.append(f"tl.set('#cg{k}',{{opacity:1,visibility:'visible'}},{st});")
     for n, i in enumerate(g):
-        if i in DEST:  # palavra-chave: caixa bordô durante o bloco inteiro
-            cap_js.append(f"tl.set('#w{i}',{{backgroundColor:'{BORDO}'}},{st:.3f});")
+        if i in DEST:  # palavra-chave (correção 11/11/2026: sem caixa vermelha; letra 800 bege quente + leve pulso na fala)
+            cap_js.append(f"tl.fromTo('#w{i}',{{scale:1}},{{scale:1.08,duration:0.16,ease:'power2.out',yoyo:true,repeat:1,immediateRender:false}},{max(st, t(i)):.3f});")
             continue
         # (correção 11/11/2026: sem caixa pulando em toda palavra — só as importantes ganham destaque)
     cap_js.append(f"tl.set('#cg{k}',{{opacity:0,visibility:'hidden'}},{en});")
@@ -139,6 +139,8 @@ def clip_end(tm):
 PUNCH = [(t(p(x["em"])) - 0.04, x.get("escala", 1.08)) for x in PLANO.get("punches", [])]
 LENTOS = [(t(p(x["de"])) - 0.04, W[p(x["ate"])]["end"], x.get("escala", 1.05)) for x in PLANO.get("lentos", [])]
 ZOOMS = [(c["out_in"], c.get("zoom_ate", c["out_out"])) for c in EDL["clips"] if c.get("zoom")]
+if PLANO.get("zoom_palavras"):
+    ZOOMS = []  # correção 11/11/2026: zoom só nas palavras-chave (zoom_palavras), não nas aberturas de trecho
 json.dump(dict(burns=sorted(burns + WHIPS + BLURS), whips=WHIPS, blurs=BLURS), open(caminho("assets", "transitions.json"), "w"))
 
 
@@ -192,18 +194,19 @@ html,body{{margin:0;width:1080px;height:1920px;overflow:hidden;background:{PRETO
 .tela .tl1{{font-family:'Montserrat';font-weight:700;font-size:50px;line-height:1.2;color:#fff;letter-spacing:.5px;
   text-shadow:0 1px 3px rgba(0,0,0,.55),0 3px 16px rgba(0,0,0,.4)}}
 .tela .fil{{width:84px;height:5px;border-radius:3px;background:{BORDO};margin:16px auto 10px}}
-.tela .tl2{{font-family:'Playfair Display';font-style:italic;font-weight:800;font-size:92px;line-height:1.08;color:#fff;
+.tela .tl2{{font-family:'Montserrat';font-weight:800;font-size:84px;line-height:1.08;color:#fff;letter-spacing:-1px;
   text-shadow:0 2px 4px rgba(0,0,0,.5),0 4px 22px rgba(0,0,0,.45)}}
-.tela .tl2 em{{font-style:italic;color:{BEGE}}}
-.tela .pl{{font-family:'Playfair Display';font-style:italic;font-weight:800;font-size:84px;line-height:1.12;color:#fff;
+.tela .tl2 em{{font-style:normal;color:#F1D9B5}}
+.tela .pl{{font-family:'Montserrat';font-weight:800;font-size:74px;line-height:1.12;color:#fff;
   text-shadow:0 2px 4px rgba(0,0,0,.5),0 4px 22px rgba(0,0,0,.45)}}
 .tela .pl .dot{{display:inline-block;width:16px;height:16px;border-radius:50%;background:{BORDO};margin-right:22px;vertical-align:middle}}
 /* captions */
 #caps{{position:absolute;left:90px;right:90px;top:1230px;height:200px;z-index:10}}
 .cg{{position:absolute;left:0;right:0;top:0;text-align:center;opacity:0;visibility:hidden;
-  font-family:'Montserrat';font-weight:700;font-size:56px;line-height:1.35;color:#fff;word-spacing:-8px}}
-.w{{display:inline-block;padding:0 8px 3px;border-radius:12px;background:rgba(142,28,36,0);
-  text-shadow:0 1px 3px rgba(0,0,0,.5),0 2px 14px rgba(0,0,0,.35)}}
+  font-family:'Montserrat';font-weight:600;font-size:58px;line-height:1.35;color:#fff;word-spacing:-6px}}
+.w{{display:inline-block;padding:0 7px 3px;font-weight:600;
+  text-shadow:0 1px 3px rgba(0,0,0,.55),0 2px 14px rgba(0,0,0,.4)}}
+.w.k{{font-weight:800;color:#F1D9B5}}
 /* emphasis title */
 {T_IDS}{{position:absolute;left:70px;right:70px;top:1090px;text-align:center;z-index:12}}
 {T_SMALL}{{font-family:'Montserrat';font-weight:700;font-size:56px;color:#fff;text-shadow:{HALO}}}
@@ -257,7 +260,7 @@ for n, x in enumerate(TELAS):
         if x.get("destaque"):
             l2 = l2.replace(esc(x["destaque"]), f"<em>{esc(x['destaque'])}</em>")
         inner = (f'<div class="tl1" id="tl{n}a">{esc(x["linha1"])}</div><div class="fil" id="tf{n}"></div>'
-                 + (f'<div class="tl2" id="tl{n}b" style="font-size:{x.get("px2", 92)}px">{l2}</div>' if x.get("linha2") else ""))
+                 + (f'<div class="tl2" id="tl{n}b" style="font-size:{x.get("px2", 84)}px">{l2}</div>' if x.get("linha2") else ""))
     top = x.get("top")
     sty = f' style="top:{top}px"' if top else ""
     tela_html += f'<div id="tela{n}" class="tela clip"{sty} data-start="{ts}" data-duration="{round(te - ts, 3)}" data-track-index="{30 + n}"><div class="glow"></div>{inner}</div>'
@@ -300,6 +303,16 @@ for a_, b_, s_ in LENTOS:  # aproximação progressiva e volta gradual
     if ce - b2 > 0.55:
         js.append(f"tl.to('#vwrap',{{scale:1,duration:0.5,ease:'sine.inOut'}},{b2 + 0.01:.3f});")
     js.append(f"tl.set('#vwrap',{{scale:1}},{ce:.3f});")
+CLIP_STARTS = sorted(c["out_in"] for c in EDL["clips"])
+for z in PLANO.get("zoom_palavras", []):  # aproximação suave na palavra-chave e volta gradual
+    a_ = t(p(z["em"])) - 0.06
+    s_ = z.get("escala", 1.1)
+    ce = clip_end(a_)
+    js.append(f"tl.fromTo('#vwrap',{{scale:1}},{{scale:{s_},duration:0.45,ease:'power2.out',immediateRender:false}},{a_:.3f});")
+    back = min(a_ + 1.7, ce - 0.75)
+    if back > a_ + 0.6:
+        js.append(f"tl.to('#vwrap',{{scale:1,duration:0.7,ease:'sine.inOut'}},{back:.3f});")
+    js.append(f"tl.set('#vwrap',{{scale:1}},{min(ce, back + 0.72) if back > a_ + 0.6 else ce:.3f});")
 for bt in WHIPS:  # chicote discreto: deslocamento lateral curto (o borrão de movimento vem do fx_transicoes.py)
     js.append(f"tl.fromTo('#vwrap',{{x:0,scale:1}},{{x:-70,scale:1.06,duration:0.08,ease:'power2.in',immediateRender:false}},{bt - 0.08:.3f});")
     js.append(f"tl.fromTo('#vwrap',{{x:70,scale:1.06}},{{x:0,scale:1,duration:0.16,ease:'power3.out',immediateRender:false}},{bt:.3f});")
