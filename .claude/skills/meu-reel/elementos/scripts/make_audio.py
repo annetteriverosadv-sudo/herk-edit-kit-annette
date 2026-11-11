@@ -63,12 +63,13 @@ def lufs(path):
 
 
 pre, out = os.path.join(A, "mix_pre.wav"), os.path.join(A, "mix.wav")
-ALVO = float(PLANO.get("lufs", -12.0))  # 2026-11-09: voz mais alta (era -14)
+ALVO = float(PLANO.get("lufs", -12.0))
+# 2026-11-11: o '-ac 2' baixava o mono ~3 dB e o limitador compensava esmagando a voz; agora pan sem perda.  # 2026-11-09: voz mais alta (era -14)
 g = ALVO - lufs(pre)
 for _ in range(8):
     r = subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", pre, "-af",
-                        f"volume={g:.2f}dB,alimiter=limit=0.89:attack=1:release=60:level=false",
-                        "-ar", "48000", "-ac", "2", "-c:a", "pcm_s16le", out], capture_output=True, text=True)
+                        f"pan=stereo|c0=c0|c1=c0,volume={g:.2f}dB,alimiter=limit=0.89:attack=1:release=60:level=false",
+                        "-ar", "48000", "-c:a", "pcm_s16le", out], capture_output=True, text=True)
     if r.returncode: sys.exit(r.stderr)
     got = lufs(out)
     if abs(got - ALVO) <= 0.3: break

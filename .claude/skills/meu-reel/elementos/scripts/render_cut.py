@@ -37,6 +37,12 @@ def _size(path):  # largura/altura já com a rotação do celular aplicada
     return (h, w) if rot in (90, 270) else (w, h)
 
 
+def _hdr(path):
+    o = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=color_transfer",
+                        "-of", "csv=p=0", path], capture_output=True, text=True).stdout
+    return "b67" in o or "2084" in o
+
+
 def run(cmd):
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:
@@ -52,9 +58,15 @@ def clip_job(k_c):
     w, h = round(cr["w"] * SW / 2) * 2, round(cr["w"] * SH / 2) * 2
     x, y = round(cr["x"] * SW), round(cr["y"] * SH)
     g = COR.get(c["take"], 1.0)  # correção de exposição/balanço de branco por gravação (sem filtro de estilo)
-    vf = (f"crop={w}:{h}:{x}:{y},scale=1080:1920:flags=lanczos,"
-          f"colorchannelmixer=rr={0.98 * g:.3f}:gg={g:.3f}:bb={1.035 * g:.3f},"
-          "eq=contrast=1.03:saturation=1.02,unsharp=5:5:0.35:5:5:0,fps=30,setsar=1,"
+    # Gravação do iPhone em HDR (HLG): converte para SDR com tonemap (correção 11/11/2026: "que iluminação é essa?"
+    # — sem isso a imagem fica lavada e acinzentada) e baixa um pouco o fundo claro com uma curva suave.
+    hdr = _hdr(_orig(c["take"]))
+    tm = ("zscale=tin=arib-std-b67:pin=bt2020:min=bt2020nc:t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,"
+          "tonemap=mobius:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p,"
+          "curves=master='0/0 0.5/0.47 0.85/0.80 1/0.93',") if hdr else ""
+    vf = (f"crop={w}:{h}:{x}:{y},scale=1080:1920:flags=lanczos,{tm}"
+          f"colorchannelmixer=rr={g:.3f}:gg={g:.3f}:bb={g:.3f},"
+          "unsharp=5:5:0.3:5:5:0,fps=30,setsar=1,"
           f"trim=end_frame={nfr},setpts=PTS-STARTPTS")
     af = (f"aresample=48000,apad,atrim=end={dur:.6f},asetpts=PTS-STARTPTS,"
           f"afade=t=in:d=0.012,afade=t=out:st={max(0, dur - 0.012):.3f}:d=0.012")
@@ -62,7 +74,8 @@ def clip_job(k_c):
     run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-ss", f"{c['src_in']:.3f}", "-t", f"{dur:.3f}",
          "-i", _orig(c["take"]), "-frames:v", str(nfr), "-map", "0:v:0", "-map", "0:a:0",
          "-vf", vf, "-af", af, "-c:v", "libx264", "-crf", "14", "-preset", "veryfast",
-         "-pix_fmt", "yuv420p", "-c:a", "pcm_s16le", "-ac", "1", out])
+         "-pix_fmt", "yuv420p", "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709",
+         "-c:a", "pcm_s16le", "-ac", "1", out])
     return out
 
 
@@ -91,17 +104,29 @@ voice = (f"{rnn}loudnorm=I=-20:TP=-3:LRA=11:linear=true,"
          "acompressor=threshold=-24dB:ratio=3:attack=6:release=120:makeup=3,"
          "loudnorm=I=-16:TP=-1.5:LRA=6")
 A = os.path.join(ROOT, "assets")
-run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", raw, "-vn", "-ac", "1", "-af", hum, "-ar", "48000",
-     "-c:a", "pcm_s16le", os.path.join(A, "voice_hum.wav")])
-r_ = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "dereverb.py"),
-                     os.path.join(A, "voice_hum.wav"), os.path.join(A, "voice_dry.wav"), "0.5", "0.6"],
-                    capture_output=True, text=True)
-if r_.returncode: sys.exit(r_.stderr[-1500:])
-raw_voice = os.path.join(A, "voice_dry.wav")
-run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", raw_voice, "-vn", "-af", voice, "-ar", "48000",
-     "-c:a", "pcm_s16le", os.path.join(ROOT, "assets", "voice.wav")])
+VOZ = json.load(open(os.path.join(ROOT, "assets", "plano.json"))).get("voz", "tratada")
+if VOZ == "natural":
+    # Correção 11/11/2026 ("que voz é essa, tá tudo estranho"): gravação de lapela limpa (ruído ~44 dB abaixo da fala).
+    # Nada de dereverb/RNNoise/expansor: só tira o grave de manuseio, suaviza o "s", compressão leve e nivelamento.
+    natural = ("highpass=f=75:poles=2,equalizer=f=250:t=q:w=1:g=-1.5,equalizer=f=3200:t=q:w=1.2:g=1.2,"
+               "deesser=i=0.25,acompressor=threshold=-26dB:ratio=2.2:attack=12:release=180:knee=6:makeup=2,"
+               "loudnorm=I=-16:TP=-2:LRA=7")
+    run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", raw, "-vn", "-ac", "1", "-af", natural, "-ar", "48000",
+         "-c:a", "pcm_s16le", os.path.join(A, "voice.wav")])
+else:
+    run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", raw, "-vn", "-ac", "1", "-af", hum, "-ar", "48000",
+         "-c:a", "pcm_s16le", os.path.join(A, "voice_hum.wav")])
+    r_ = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "dereverb.py"),
+                         os.path.join(A, "voice_hum.wav"), os.path.join(A, "voice_dry.wav"), "0.5", "0.6"],
+                        capture_output=True, text=True)
+    if r_.returncode: sys.exit(r_.stderr[-1500:])
+    raw_voice = os.path.join(A, "voice_dry.wav")
+    run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", raw_voice, "-vn", "-af", voice, "-ar", "48000",
+         "-c:a", "pcm_s16le", os.path.join(ROOT, "assets", "voice.wav")])
+
 run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", raw, "-i", os.path.join(ROOT, "assets", "voice.wav"),
      "-map", "0:v", "-map", "1:a", "-c:v", "libx264", "-crf", "16", "-preset", "medium",
+     "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709",
      "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
      os.path.join(ROOT, "assets", "cut.mp4")])
 print("ok", os.path.join(ROOT, "assets", "cut.mp4"))

@@ -186,6 +186,13 @@ html,body{{margin:0;width:1080px;height:1920px;overflow:hidden;background:{PRETO
 .leak .li{{position:absolute;inset:-15%;
   background:radial-gradient(ellipse 50% 60% at 100% 35%,rgba(198,40,40,.85),rgba(198,40,40,.35) 40%,rgba(198,40,40,0) 70%),
              radial-gradient(ellipse 45% 45% at 85% 70%,rgba(255,178,92,.6),rgba(255,150,70,.2) 45%,rgba(255,150,70,0) 75%)}}
+/* textos de tela do roteiro (correção 11/11/2026) */
+.tela{{position:absolute;left:50px;right:50px;top:780px;text-align:center;z-index:13}}
+.tela .tl1{{display:inline-block;font-family:'Montserrat';font-weight:800;font-size:54px;line-height:1.2;color:#fff;
+  background:{BORDO};border-radius:14px;padding:8px 26px 10px;box-shadow:0 8px 26px rgba(0,0,0,.35)}}
+.tela .tl2{{display:inline-block;font-family:'Playfair Display';font-style:italic;font-weight:800;font-size:92px;line-height:1.1;color:{BORDO};
+  background:rgba(239,230,216,.96);border-radius:16px;padding:4px 28px 12px;margin-top:12px;box-shadow:0 8px 26px rgba(0,0,0,.3)}}
+.tela .tl1 .pt{{display:none}}
 /* captions */
 #caps{{position:absolute;left:90px;right:90px;top:1190px;height:200px;z-index:10}}
 .cg{{position:absolute;left:0;right:0;top:0;text-align:center;opacity:0;visibility:hidden;
@@ -234,6 +241,17 @@ for n, x in enumerate(LISTAS):
     lis_html += (f'<div id="l{n + 1}" class="card clip" data-start="{ls}" data-duration="{round(le - ls, 3)}" data-track-index="{7 + n}">'
                  f'<div class="head" id="l{n + 1}h">{esc(x["titulo"])}</div>{items_html(f"l{n + 1}i", [(i[0], p(i[1])) for i in x["itens"]])}{foot}</div>')
 
+TELAS = [dict(x, a=p(x["de"]), b=p(x["ate"])) for x in PLANO.get("telas", [])]
+tela_html = ""
+for n, x in enumerate(TELAS):
+    ts, te = round(max(0, t(x["a"]) - 0.08), 3), fim_de(x["b"])
+    if x.get("partes"):
+        l1 = '<div class="tl1" style="font-size:42px">' + "".join(f'<span class="pt" id="tp{n}_{m}">{esc(txt)}</span>' for m, (txt, _) in enumerate(x["partes"])) + "</div>"
+    else:
+        l1 = f'<div class="tl1" id="tl{n}a">{esc(x["linha1"])}</div>'
+    l2 = f'<div class="tl2" id="tl{n}b" style="font-size:{x.get("px2", 84)}px">{esc(x["linha2"])}</div>' if x.get("linha2") else ""
+    tela_html += f'<div id="tela{n}" class="tela clip" data-start="{ts}" data-duration="{round(te - ts, 3)}" data-track-index="{30 + n}"><div>{l1}</div>' + (f'<div>{l2}</div>' if l2 else '') + '</div>'
+
 body = f"""
 <div id="reel" data-composition-id="reel" data-start="0" data-duration="{DUR}" data-width="1080" data-height="1920">
  <div id="vwrap"><video id="v" src="assets/{'cut_fx.mp4' if os.path.exists(caminho('assets', 'cut_fx.mp4')) else 'cut.mp4'}" muted playsinline data-start="0" data-duration="{VID}" data-track-index="0"></video></div>
@@ -244,6 +262,7 @@ body = f"""
  {tit_html}
  {leak_html}
  {lis_html}
+ {tela_html}
 </div>
 """
 
@@ -311,6 +330,20 @@ for n, x in enumerate(LISTAS):
         js.append(f"tl.from('#l{n + 1}f',{{opacity:0,y:16,duration:0.22,ease:'sine.out'}},{t(p(x['rodape'][1])) - 0.04:.3f});")
     if le < VID:
         js.append(f"tl.to('#l{n + 1}',{{opacity:0,duration:0.15,ease:'power1.in'}},{le - 0.15:.3f});")
+for n, x in enumerate(TELAS):
+    ts, te = round(max(0, t(x["a"]) - 0.08), 3), fim_de(x["b"])
+    if x.get("partes"):
+        for m, (txt, ref) in enumerate(x["partes"]):
+            tm = ts if m == 0 else t(p(ref)) - 0.04
+            js.append(f"tl.set('#tp{n}_{m}',{{display:'inline'}},{tm:.3f});")
+            js.append(f"tl.fromTo('#tp{n}_{m}',{{opacity:0}},{{opacity:1,duration:0.18,ease:'power2.out',immediateRender:false}},{tm:.3f});")
+        js.append(f"tl.from('#tela{n} .tl1',{{opacity:0,y:14,duration:0.22,ease:'power2.out'}},{ts:.3f});")
+    else:
+        js.append(f"tl.from('#tl{n}a',{{opacity:0,y:14,filter:'blur(10px)',duration:0.24,ease:'power2.out'}},{ts:.3f});")
+        if x.get("linha2"):
+            js.append(f"tl.from('#tl{n}b',{ghost},{ts + 0.18:.3f});")
+    if te < VID:
+        js.append(f"tl.to('#tela{n}',{{opacity:0,duration:0.18,ease:'power1.in'}},{te - 0.18:.3f});")
 js += cap_js
 js.append("window.__timelines=window.__timelines||{};window.__timelines['reel']=tl;")
 

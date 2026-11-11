@@ -33,10 +33,9 @@ for tc, tr in starts:
             a = tc + k * F
             filt.append(f"dblur=angle=0:radius={r}:enable='between(t,{a - 0.004:.3f},{a + F - 0.006:.3f})'")
 # correção leve de luz e cor (pedido de 11/11/2026): contraste, pele um pouco mais quente, sem filtro de estilo
-filt.insert(0, "eq=contrast=1.07:brightness=0.015:saturation=1.04:gamma=0.97,colorbalance=rm=0.015:bm=-0.01")
 src, out = caminho("assets", "cut.mp4"), caminho("assets", "cut_fx.mp4")
 r = subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", src, "-vf", ",".join(filt), "-c:v", "libx264",
-                    "-crf", "16", "-preset", "medium", "-pix_fmt", "yuv420p", "-c:a", "copy", "-movflags", "+faststart", out],
+                    "-crf", "16", "-preset", "medium", "-pix_fmt", "yuv420p", "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709", "-c:a", "copy", "-movflags", "+faststart", out],
                    capture_output=True, text=True)
 if r.returncode: sys.exit(r.stderr[-1500:])
 print("ok", out, [(round(tc, 2), tr) for tc, tr in starts])

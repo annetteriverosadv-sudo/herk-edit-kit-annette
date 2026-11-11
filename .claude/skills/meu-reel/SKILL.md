@@ -28,7 +28,9 @@ Ela não programa: antes de cada passo, diga em **uma frase simples** o que vai 
    `npm run transcribe -- video-projects/<nome>/source/work/<take>.mov -o video-projects/<nome>/transcripts/<take>.json --prompt "<termos do tema>"`.
    O `--prompt` com os termos jurídicos do tema (ex.: auxílio-acidente, indenizatória) corrige a grafia.
    Leia a transcrição inteira; a fala só sai pela transcrição (não dá para "ouvir").
-4. **Plano.** Escreva `assets/plano.json` a partir de [plano_exemplo.json](elementos/scripts/plano_exemplo.json):
+4. **Plano.** Se o roteiro tiver linhas "📱 Na tela", elas viram `"telas"` no plano, com o texto exato (correção de 11/11/2026).
+   Antes de tratar a voz, meça o ruído: lapela limpa → `"voz": "natural"`.
+   Escreva `assets/plano.json` a partir de [plano_exemplo.json](elementos/scripts/plano_exemplo.json):
    ordem dos blocos (segue o roteiro dela), gancho, títulos e listas.
    - **Abertura:** compare 3 aberturas com a mesma fala e use a mais forte — de preferência a frase que o
      público diz ("Já voltei a trabalhar. Não tenho mais direito?"). Nada que ela não tenha dito.
