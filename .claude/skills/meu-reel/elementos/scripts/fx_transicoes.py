@@ -33,6 +33,8 @@ for tc, tr in starts:
             a = tc + k * F
             filt.append(f"dblur=angle=0:radius={r}:enable='between(t,{a - 0.004:.3f},{a + F - 0.006:.3f})'")
 # correção leve de luz e cor (pedido de 11/11/2026): contraste, pele um pouco mais quente, sem filtro de estilo
+# 12/11/2026 "ela tá muito amarela": tira o amarelado da pele (R−B do rosto 60 → 47) sem acinzentar
+filt.insert(0, "colorbalance=rs=-0.02:bs=0.03:rm=-0.04:gm=-0.005:bm=0.05:rh=-0.02:bh=0.03,eq=saturation=0.92")
 src, out = caminho("assets", "cut.mp4"), caminho("assets", "cut_fx.mp4")
 r = subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", src, "-vf", ",".join(filt), "-c:v", "libx264",
                     "-crf", "16", "-preset", "medium", "-pix_fmt", "yuv420p", "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709", "-c:a", "copy", "-movflags", "+faststart", out],
