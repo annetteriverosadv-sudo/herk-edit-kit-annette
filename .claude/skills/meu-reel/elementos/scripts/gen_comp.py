@@ -41,6 +41,14 @@ HOOK = (0, p(G["ate"])) if G else None
 TITULOS = [dict(x, a=p(x["de"]), b=p(x["ate"])) for x in PLANO.get("titulos", [])]
 LISTAS = [dict(x, a=p(x["de"]), b=p(x["ate"])) for x in PLANO.get("listas", [])]
 RANGES = ([HOOK] if HOOK else []) + [(x["a"], x["b"]) for x in TITULOS] + [(x["a"], x["b"]) for x in LISTAS]
+# 19/11: elementos próprios do vídeo (scripts/extras.py, se existir): cartões, aproximações, transições
+try:
+    import extras
+    EXTRA = extras.montar(W=W, p=p, t=t, EDL=EDL, VID=VID, PLANO=PLANO)
+except ModuleNotFoundError:
+    EXTRA = dict(css="", html="", js="", ocultar=[], sons=[])
+RANGES += [(a, b) for a, b in EXTRA["ocultar"]]
+json.dump(dict(sons=EXTRA["sons"]), open(caminho("assets", "sons_extras.json"), "w"))
 covered = set()
 for a, b in RANGES:
     covered.update(range(a, b + 1))
@@ -109,11 +117,24 @@ def esc(s):
 
 
 cap_html, cap_js = [], []
+KARAOKE = PLANO.get("karaoke", True)  # 19/11: False = sem caixa pulando palavra a palavra; só a palavra-chave em caixa
 for k, (g, (st, en)) in enumerate(zip(groups, gtimes)):
-    spans = "".join(f'<span class="w" id="w{i}">{esc(W[i]["text"])}</span> ' for i in g)
+    if KARAOKE:
+        spans = "".join(f'<span class="w" id="w{i}">{esc(W[i]["text"])}</span> ' for i in g)
+    else:  # palavras-chave seguidas viram UMA caixa bordô (como no reel de referência)
+        partes, j = [], 0
+        while j < len(g):
+            if g[j] in DEST:
+                m = j
+                while m + 1 < len(g) and g[m + 1] in DEST: m += 1
+                partes.append('<span class="w kbx">' + " ".join(esc(W[i]["text"]) for i in g[j:m + 1]) + "</span>")
+                j = m + 1
+            else:
+                partes.append(f'<span class="w">{esc(W[g[j]]["text"])}</span>'); j += 1
+        spans = " ".join(partes)
     cap_html.append(f'<div class="cg" id="cg{k}">{spans.strip()}</div>')
     cap_js.append(f"tl.set('#cg{k}',{{opacity:1,visibility:'visible'}},{st});")
-    for n, i in enumerate(g):
+    for n, i in enumerate(g if KARAOKE else []):
         if i in DEST:  # palavra-chave: caixa bordô durante o bloco inteiro
             cap_js.append(f"tl.set('#w{i}',{{backgroundColor:'{BORDO}'}},{st:.3f});")
             continue
@@ -175,7 +196,8 @@ html,body{{margin:0;width:1080px;height:1920px;overflow:hidden;background:{PRETO
 #caps{{position:absolute;left:90px;right:90px;top:1190px;height:200px;z-index:10}}
 .cg{{position:absolute;left:0;right:0;top:0;text-align:center;opacity:0;visibility:hidden;
   font-family:'Montserrat';font-weight:700;font-size:58px;line-height:1.3;color:#fff;word-spacing:-10px}}
-.w{{display:inline-block;padding:0 9px 2px;border-radius:10px;background:rgba(142,28,36,0);text-shadow:{HALO}}}
+.w{{display:inline-block;padding:0 9px 2px;border-radius:10px;background:rgba(142,28,36,0);text-shadow:{HALO};word-spacing:0}}
+.w.kbx{{background:{BORDO};text-shadow:none;padding:0 14px 4px}}
 /* emphasis title */
 {T_IDS}{{position:absolute;left:70px;right:70px;top:1090px;text-align:center;z-index:12}}
 {T_SMALL}{{font-family:'Montserrat';font-weight:700;font-size:56px;color:#fff;text-shadow:{HALO}}}
@@ -189,7 +211,7 @@ html,body{{margin:0;width:1080px;height:1920px;overflow:hidden;background:{PRETO
 .card .item{{font-family:'Montserrat';font-weight:700;font-size:54px;line-height:1.35;color:{PRETO};display:flex;align-items:center;gap:22px}}
 .card .tick{{flex:0 0 26px;height:26px;border-radius:50%;background:{BORDO};display:inline-block}}
 .card .foot{{font-family:'Playfair Display';font-style:italic;font-weight:800;font-size:58px;color:{BORDO};margin-top:12px}}
-"""
+""" + EXTRA["css"]
 
 hook_html = ""
 if G:
@@ -229,6 +251,7 @@ body = f"""
  {tit_html}
  {leak_html}
  {lis_html}
+ {EXTRA["html"]}
 </div>
 """
 
@@ -281,6 +304,7 @@ for n, x in enumerate(LISTAS):
         js.append(f"tl.from('#l{n + 1}f',{{opacity:0,y:16,duration:0.22,ease:'sine.out'}},{t(p(x['rodape'][1])) - 0.04:.3f});")
     if le < VID:
         js.append(f"tl.to('#l{n + 1}',{{opacity:0,duration:0.15,ease:'power1.in'}},{le - 0.15:.3f});")
+js.append(EXTRA["js"])
 js += cap_js
 js.append("window.__timelines=window.__timelines||{};window.__timelines['reel']=tl;")
 

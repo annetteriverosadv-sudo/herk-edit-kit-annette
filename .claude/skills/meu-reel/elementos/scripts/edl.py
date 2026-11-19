@@ -14,26 +14,49 @@ from plano import ROOT, caminho, carregar, palavra
 WORK = caminho("source", "work")
 TR = caminho("transcripts")
 PRE, POST, MIN_GAP = 0.08, 0.14, 0.30
+_P = json.load(open(caminho("assets", "plano.json")))
+# 19/11: "nos pontos em que ela demora a falar a palavra, corte e já deixe na palavra sendo dita"
+PRE, POST, MIN_GAP = _P.get("pre", PRE), _P.get("pos", POST), _P.get("pausa_min", MIN_GAP)
 FACE_TARGET, EYE_TARGET = 0.175, 0.28  # rosto 17,5% (aberto) a ~19% (fechado)
 FACES = json.load(open(caminho("assets", "faces.json")))
 PLANO = carregar()
+# 19/11 ("o enquadramento tá estranho"): rosto do MESMO tamanho em todos os cortes, como na referência (~22-23%).
+# O alvo é o maior entre o pedido e o mínimo que cada gravação exige para os olhos ficarem a 28%.
+if PLANO.get("rosto_fixo"):
+    FACE_TARGET = max(PLANO["rosto_fixo"], max(f["fh"] * (1 - EYE_TARGET) / (1 - f["eye"]) for f in FACES.values()))
 
 
 def voiced_runs(take):
-    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", os.path.join(WORK, take + ".mov"), "-vn", "-ac", "1",
-                          "-ar", "16000", "-af", "highpass=f=150,lowpass=f=3800", "-f", "s16le", "-"],
-                         capture_output=True).stdout
-    x = np.frombuffer(raw, np.int16).astype(np.float32) / 32768
-    hop = 160; n = len(x) // hop
-    db = 20 * np.log10(np.sqrt(np.mean(x[:n * hop].reshape(n, hop) ** 2, axis=1)) + 1e-9)
-    floor, peak = np.percentile(db, 8), np.percentile(db, 95)
-    v = db > floor + 0.45 * (peak - floor)
+    # 19/11: pausas medidas no áudio externo ANTES do tratamento (a compressão "enche" as pausas);
+    # sem áudio externo, na voz da câmera já sem eco
+    cands = [caminho("source", "ext", take + ".wav"), caminho("source", "voz", f"_{take}_dry.wav"), os.path.join(WORK, take + ".mov")]
+    if take in PLANO.get("camera_audio", []):  # 19/11 v4: pausas medidas na MESMA voz que vai ao ar (câmera sem eco)
+        cands = [caminho("source", "voz", f"_{take}_dry.wav"), caminho("source", "voz_cam", f"_{take}_dry.wav")] + cands
+    src = next(c for c in cands if os.path.exists(c))
+    def env(af):
+        raw = subprocess.run(["ffmpeg", "-v", "error", "-i", src, "-vn", "-ac", "1", "-ar", "16000", "-af", af, "-f", "s16le", "-"],
+                             capture_output=True).stdout
+        x = np.frombuffer(raw, np.int16).astype(np.float32) / 32768
+        hop = 160; n = len(x) // hop
+        db = 20 * np.log10(np.sqrt(np.mean(x[:n * hop].reshape(n, hop) ** 2, axis=1)) + 1e-9)
+        floor, peak = np.percentile(db, 8), np.percentile(db, 95)
+        return db, floor, peak, n
+    db, floor, peak, n = env("highpass=f=150,lowpass=f=3800")
+    # 19/11: o detector só via graves/médios e cortava o "des" de "descontos": a faixa aguda (S, X, F) também conta
+    dh, fh, ph, nh = env("highpass=f=3500,lowpass=f=7800")
+    n = min(n, nh)
+    vl = db[:n] > floor + 0.45 * (peak - floor)          # fala (médios)
+    vh = dh[:n] > fh + 0.45 * (ph - fh)                   # chiado de S/X/F (agudos)
     runs, i = [], 0
     while i < n:
-        if v[i]:
+        if vl[i]:
             j = i
-            while j < n and v[j]: j += 1
-            runs.append([i / 100, j / 100]); i = j
+            while j < n and vl[j]: j += 1
+            a, b = i, j
+            # 19/11 v4: a faixa aguda só ESTENDE o começo/fim da palavra (no máx. 0,25 s), sem tapar a pausa
+            while a > 0 and vh[a - 1] and i - a < 25: a -= 1
+            while b < n and vh[b] and b - j < 25: b += 1
+            runs.append([a / 100, b / 100]); i = j
         else:
             i += 1
     merged = []
@@ -103,19 +126,26 @@ for bi, (take, a, b, label, flash, fixo) in enumerate(blocks):
     # split into sub-clips at long pauses
     subs = [[rr[0][0] - PRE, rr[0][1] + POST]]
     for (pa, pb), (na, nb) in zip(rr, rr[1:]):
-        if na - pb >= MIN_GAP:
+        if na - pb >= max(MIN_GAP, PRE + POST + 0.10):  # 19/11 v4: só corta se sobrar >= 0,1 s de silêncio para tirar
             subs.append([na - PRE, nb + POST])
         else:
             subs[-1][1] = nb + POST
+    # 19/11 v4: trecho com menos de 0,5 s não vira corte próprio (dá pulo estranho): junta com o anterior
+    k = 1
+    while k < len(subs):
+        if subs[k][1] - subs[k][0] < 0.5 or subs[k - 1][1] - subs[k - 1][0] < 0.5:
+            subs[k - 1][1] = subs[k][1]; del subs[k]
+        else:
+            k += 1
     # snap every clip to a whole number of frames so video and audio lengths match exactly
     subs = [[round(ia * 30) / 30, round(ia * 30) / 30 + max(1, round((ib - ia) * 30)) / 30] for ia, ib in subs]
     for si, (ia, ib) in enumerate(subs):
         seg_words = [w for w in ws if ia - 0.02 <= w["start"] < ib]
         # punch-in toggles when a new sentence starts (block start or after . ? !)
         zoom = any((take, words[take].index(w)) in ZOOM for w in seg_words[:1])
-        if si == 0:
+        if si == 0 or PLANO.get("rosto_fixo"):  # rosto fixo: sem alternar aberto/fechado
             punch = 1.0                      # cada bloco novo volta ao plano aberto
-        elif clips and clips[-1]["last_text"][-1:] in ".?!:":
+        elif clips and clips[-1]["last_text"][-1:] in ".?!:" and not PLANO.get("rosto_fixo"):
             punch = 1.0 if punch != 1.0 else 1.10
         first = (take, words[take].index(seg_words[0])) if seg_words else None
         if first in PLANOS:

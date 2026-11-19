@@ -34,6 +34,12 @@ itens = [palavra(T, it[1]) for lst in PLANO.get("listas", []) for it in lst["ite
 cliques = [s.clique(FREQ_CLIQUES[k % len(FREQ_CLIQUES)]) for k in range(len(itens))]
 for k, i in enumerate(itens):
     s.add(sfx, NIVEL_CLIQUE * cliques[k], T[i]["start"] - 0.04)
+# 19/11: toques e cliques dos elementos próprios do vídeo (extras.py, via gen_comp -> assets/sons_extras.json)
+_se = caminho("assets", "sons_extras.json")
+if os.path.exists(_se):
+    for k, (tipo, tt) in enumerate(json.load(open(_se))["sons"]):
+        if tipo == "toque": s.add(sfx, NIVEL_TOQUE * toque, max(0, tt))
+        else: s.add(sfx, NIVEL_CLIQUE * s.clique(FREQ_CLIQUES[k % len(FREQ_CLIQUES)]), max(0, tt))
 sfx = sfx[:N]
 
 A = caminho("assets")
@@ -47,7 +53,8 @@ if PLANO.get("trilha", False):
           "[2:a]volume=-6dB[s];"
           "[v][md][s]amix=inputs=3:duration=first:normalize=0[out]")
 else:  # sem música de fundo: só voz + efeitos
-    fc = ("[0:a]aresample=48000[v];[1:a]volume=-140dB[m];[2:a]volume=-4dB[s];"
+    VZ = PLANO.get("voz_mix", "")  # 19/11: voz mais alta e encorpada antes da mixagem
+    fc = (f"[0:a]aresample=48000{(',' + VZ) if VZ else ''}[v];[1:a]volume=-140dB[m];[2:a]volume=-4dB[s];"
           "[v][s]amix=inputs=2:duration=first:normalize=0[out];[m]anullsink")
 r = subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", os.path.join(A, "voice.wav"),
                     "-i", os.path.join(A, "music.wav"), "-i", os.path.join(A, "sfx.wav"), "-filter_complex", fc,
