@@ -79,7 +79,7 @@ salvo pedido diferente da Dra. Annette na hora.
 ## Imagem
 
 - 9:16, 1080×1920, 30 fps.
-- **Enquadramento fixo e igual em todos os cortes** (correção de 19/11/2026: "o enquadramento tá bem estranho, corta um pouco"): rosto com ~23% da altura do quadro e olhos a 28% do topo, como no reel de referência; sem alternar aberto/fechado a cada frase e sem movimentos de câmera nas transições (`"rosto_fixo": 0.23` no plano). Só as aproximações suaves dos momentos-chave (100%→106%).
+- **Enquadramento fixo e igual em todos os cortes** (correção de 19/11/2026: "o enquadramento tá bem estranho, corta um pouco"): rosto com ~25% da altura do quadro (aprovado no reel dos descontos; a referência usa 22–23%) e olhos a 28% do topo; sem alternar aberto/fechado a cada frase e sem movimentos de câmera nas transições (`"rosto_fixo": 0.25` no plano). Só as aproximações suaves dos momentos-chave (100%→106%).
 - Grade quente e sóbria: pele natural, fundo um pouco mais escuro que o rosto. (Filtro de cor, vinheta e grão ainda não foram aplicados em nenhum reel — só usar se ela pedir.)
 - **Fundo desfocado e um pouco mais escuro quando estiver poluído** (correção de 19/11/2026: "melhore o enquadramento e a iluminação"): recorte da pessoa com MODNet (`fundo.py`; desfoque 14, fundo a 74% do brilho e 85% da cor, pessoa com meios-tons +6%), máscara suavizada no tempo e zerada a cada corte. O rosto vira o ponto mais claro do quadro, como na referência. Prefira cenário neutro (cinza claro, bege ou estante).
 - Logo Riveros no canto: ainda não usado (falta o arquivo oficial do logo) — só com o arquivo dela e se ela pedir.
