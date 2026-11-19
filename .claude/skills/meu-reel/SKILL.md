@@ -37,9 +37,12 @@ Ela não programa: antes de cada passo, diga em **uma frase simples** o que vai 
    outra pessoa e repetições. Monte `review/cortes-de-erro.mp4` (cada trecho com rótulo "CORTE n — SERÁ REMOVIDO"),
    envie e **espere ela aprovar**. Pausas ≥ 0,30 s podem ser cortadas sem perguntar.
 6. **Cortar.** `python3 scripts/edl.py` e `python3 scripts/render_cut.py` (usa os originais 4K, limpa a voz).
+   Fundo poluído: `python3 scripts/fundo.py` (desfoca e escurece só o fundo; precisa de `pip install onnxruntime` e
+   `~/tools/models/modnet.onnx` de huggingface.co/Xenova/modnet; ~0,25 s por quadro).
    Confira uma folha de contato: olhos na mesma altura em todos os trechos.
 7. **Legenda e animações.** `python3 scripts/gen_comp.py`, depois `npx hyperframes lint` (0 erros).
-   Legenda palavra por palavra: Montserrat Bold (700), letras normais, caixa bordô na palavra falada.
+   Legenda: Montserrat Bold (700), letras normais, **sem karaokê** (`"karaoke": false`); só a palavra-chave em caixa bordô.
+   Quadro de destaque na altura da legenda e a legenda some enquanto ele aparece (19/11). Enquadramento fixo: `"rosto_fixo": 0.23`.
    Recursos do plano (ver `_novidades_2026_11_09` no plano de exemplo): aproximações suaves, planos à mão,
    lista digitada, destaques em bordô, light leak, correção de luz por gravação.
 8. **Som.** `python3 scripts/make_audio.py` (voz + transições e toques, **sem música de fundo**; mixagem a −10 LUFS).
@@ -50,6 +53,22 @@ Ela não programa: antes de cada passo, diga em **uma frase simples** o que vai 
     registre em `VERIFY.md` e envie. Diga sempre que o som foi conferido só por medição.
 11. **Correções.** Toda correção dela vira regra nova, com data, na seção "Correções" do [DESIGN.md](DESIGN.md)
     (e a regra antiga é ajustada). Se for sobre o processo, ajuste esta skill também.
+
+## Quando o áudio externo foi gravado AO MESMO TEMPO que o vídeo (19/11/2026)
+
+Ela pode mandar áudios do WhatsApp gravados por outro celular durante a gravação (com falas de bastidor antes e depois).
+1. Converta cada áudio para 48 kHz mono (`source/vo/`), transcreva e descubra qual vídeo é de qual áudio (texto + correlação).
+   Avise logo se faltar áudio de algum vídeo ou se vier arquivo repetido (compare `md5sum`).
+2. `assets/externo.json` = {take: {arquivo, off (estimativa em s)}} e rode `python3 scripts/alinhar_externo.py`
+   (grava `source/ext/<take>.wav` no tempo do vídeo; as janelas de 3 s devem variar só alguns ms). Áudio com eco: `"fixo"` = mediana.
+3. `python3 scripts/tratar_voz.py` (voz tratada por gravação em `source/voz/`; `"camera_audio"` no plano = gravações que usam o som da câmera)
+   e depois `python3 scripts/igualar_voz.py` (mesmo timbre e mesmo volume em todas — obrigatório quando mistura câmera e WhatsApp).
+4. Transcrições de `source/ext/` em `transcripts/<take>.json` (as da câmera vão para `transcripts/cam/`), grafia corrigida;
+   **confira o início e o fim de cada bloco pela energia do som** (o Whisper marca começos tarde: "Desde", "Isso", "Abre").
+5. `edl.py` (pausas no áudio externo cru, com a faixa aguda para não cortar S/X/F), `render_cut.py` (usa `source/voz/`),
+   `legenda_ajustes.py` (`"juntar_legenda"`: "mil e oitocentos reais" → "R$ 1.800"), gen_comp, make_audio.
+6. Conferência objetiva da sincronia: som do vídeo final × som da câmera recortado nos mesmos pontos (≈ 0 ms por trecho);
+   transcrição do áudio final com o Whisper **medium** comparada com a fala.
 
 ## Quando o áudio da gravação não presta: locução à parte
 
@@ -71,7 +90,8 @@ Se ela mandar um áudio gravado à parte (ex.: WhatsApp), ele vira a voz do reel
 | Som de transição (sopro + tom) | `sons.py` `sopro()` + `tom()` | Só nas trocas de assunto, junto com o film burn. Sempre baixo |
 | Toque abafado | `sons.py` `toque()` | Quando entra a palavra grande de um título |
 | Cliques secos | `sons.py` `clique()` | Um por item de lista, alternando o tom |
-| Film burn singelo | `gen_comp.py` (classe `.burn`) | Em cada troca de bloco do plano — nunca em todo corte |
+| Film burn singelo | `gen_comp.py` (classe `.burn`) | **No máximo um por vídeo** (19/11): `"burn": true` só no bloco da virada principal; nos outros, `"burn": false` e `"transicoes"` variadas (ver extras) |
+| Cartões, aproximações e transições próprias do vídeo | `scripts/extras.py` do projeto (modelo: `elementos/scripts/extras_exemplo.py`) | Quando o roteiro dela pede textos na tela, contadores, carimbos ou movimentos específicos; o gen_comp carrega sozinho |
 | Scripts | [elementos/scripts](elementos/scripts) | Em todo vídeo, na ordem acima |
 
 Para ouvir os sons soltos (ou usar no CapCut): `python3 elementos/audio/sons.py <pasta> 60`.
@@ -98,6 +118,11 @@ Para ouvir os sons soltos (ou usar no CapCut): `python3 elementos/audio/sons.py 
   avise logo se faltar trecho (no 6x1, uma gravação errada veio no lugar da terceira parte).
 
 ## Armadilhas técnicas (já custaram tempo)
+
+- `tl.set(el, {textContent:'1.800'})` vira o número 1.8 no GSAP: para contador, um `<span>` por valor trocado com `display`.
+- Na legenda, "R$ 30" gruda (word-spacing negativo): use espaço fino inseparável (U+202F) dentro do termo.
+- Saída animada de elemento com `class="clip"` dá erro no lint: anime um invólucro interno e feche com `tl.set(opacity:0)` no fim.
+- Whisper small em trechos curtos (< 3 s) inventa palavras: confira trechos curtos com o medium, ou pela energia/boca.
 
 - `mix-blend-mode` não funciona sobre o vídeo no render (o vídeo é composto à parte): use camada com transparência normal.
 - O `hyperframes snapshot` não mostra fades pela metade; confira efeitos curtos no vídeo renderizado.

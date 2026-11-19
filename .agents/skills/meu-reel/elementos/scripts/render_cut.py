@@ -17,6 +17,7 @@ RNN = os.environ.get("RNNOISE_MODEL") or os.path.expanduser("~/tools/models/sh.r
 os.makedirs(TMP, exist_ok=True)
 edl = json.load(open(os.path.join(ROOT, "assets", "edl.json")))
 COR = json.load(open(os.path.join(ROOT, "assets", "plano.json"))).get("cor", {})
+GAMA = json.load(open(os.path.join(ROOT, "assets", "plano.json"))).get("gama", {})
 
 
 
@@ -52,15 +53,22 @@ def clip_job(k_c):
     w, h = round(cr["w"] * SW / 2) * 2, round(cr["w"] * SH / 2) * 2
     x, y = round(cr["x"] * SW), round(cr["y"] * SH)
     g = COR.get(c["take"], 1.0)  # correção de exposição/balanço de branco por gravação (sem filtro de estilo)
-    vf = (f"crop={w}:{h}:{x}:{y},scale=1080:1920:flags=lanczos,"
-          f"colorchannelmixer=rr={0.98 * g:.3f}:gg={g:.3f}:bb={1.035 * g:.3f},"
-          "eq=contrast=1.03:saturation=1.02,unsharp=5:5:0.35:5:5:0,fps=30,setsar=1,"
+    gama = GAMA.get(c["take"])
+    # 19/11: rosto escuro contra estante clara -> meios-tons clareados por gravação (rosto ~133/255 em todas),
+    # realces amaciados (estante sem estourar), pele natural
+    luz = (f"eq=gamma={gama}:contrast=1.05:saturation=1.05,curves=all='0/0 0.6/0.6 0.85/0.82 1/0.95',"
+           "colorchannelmixer=rr=1.0:bb=1.015," if gama else
+           f"colorchannelmixer=rr={0.98 * g:.3f}:gg={g:.3f}:bb={1.035 * g:.3f},eq=contrast=1.03:saturation=1.02,")
+    vf = (f"crop={w}:{h}:{x}:{y},scale=1080:1920:flags=lanczos,{luz}"
+          "unsharp=5:5:0.35:5:5:0,fps=30,setsar=1,"
           f"trim=end_frame={nfr},setpts=PTS-STARTPTS")
     af = (f"aresample=48000,apad,atrim=end={dur:.6f},asetpts=PTS-STARTPTS,"
           f"afade=t=in:d=0.012,afade=t=out:st={max(0, dur - 0.012):.3f}:d=0.012")
     out = os.path.join(TMP, f"c{k:02d}.mov")
+    voz = os.path.join(ROOT, "source", "voz", c["take"] + ".wav")  # 19/11: voz já tratada (externo sincronizado)
+    ain = ["-ss", f"{c['src_in']:.3f}", "-t", f"{dur + 0.1:.3f}", "-i", voz] if os.path.exists(voz) else []
     run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-ss", f"{c['src_in']:.3f}", "-t", f"{dur:.3f}",
-         "-i", _orig(c["take"]), "-frames:v", str(nfr), "-map", "0:v:0", "-map", "0:a:0",
+         "-i", _orig(c["take"]), *ain, "-frames:v", str(nfr), "-map", "0:v:0", "-map", "1:a:0" if ain else "0:a:0",
          "-vf", vf, "-af", af, "-c:v", "libx264", "-crf", "14", "-preset", "veryfast",
          "-pix_fmt", "yuv420p", "-c:a", "pcm_s16le", "-ac", "1", out])
     return out
@@ -74,6 +82,14 @@ open(lst, "w").write("".join(f"file '{o}'\n" for o in outs))
 raw = os.path.join(ROOT, "assets", "cut_raw.mov")
 run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", lst, "-c", "copy", raw])
 
+if all(os.path.exists(os.path.join(ROOT, "source", "voz", c["take"] + ".wav")) for c in edl["clips"]):
+    run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", raw, "-vn", "-ac", "1", "-ar", "48000", "-c:a", "pcm_s16le",
+         os.path.join(ROOT, "assets", "voice.wav")])
+    run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", raw, "-i", os.path.join(ROOT, "assets", "voice.wav"),
+         "-map", "0:v", "-map", "1:a", "-c:v", "libx264", "-crf", "16", "-preset", "medium",
+         "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
+         os.path.join(ROOT, "assets", "cut.mp4")])
+    print("ok (voz tratada antes)", os.path.join(ROOT, "assets", "cut.mp4")); sys.exit(0)
 rnn = f"arnndn=m='{RNN}':mix=1," if os.path.exists(RNN) else ""
 if not rnn: print("AVISO: modelo RNNoise não encontrado; voz tratada só com redução espectral.")
 # Correções 2026-11-09 ("banheiro", "como microfone perto", "voz mais alta"):
