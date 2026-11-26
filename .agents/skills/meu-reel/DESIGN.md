@@ -33,6 +33,17 @@ salvo pedido diferente da Dra. Annette na hora.
 
 ## Legendas
 
+**Padrão atual (26/11/2026): o do reel de referência do escritório** ("Reel-beneficios-contribuicao-v4"), gerado por
+`gen_comp_ref.py` — vale sobre as regras de karaokê abaixo:
+- A **frase inteira** (até 4–5 palavras, ~27 letras) aparece de uma vez e troca por corte seco — sem caixa pulando de palavra em palavra.
+- Montserrat Bold ~54 px, branca, centralizada, linha a ~66% da altura (centro ≈ 1272 px).
+- **Só a expressão-chave** da frase ganha caixa bordô (cantos 8 px), texto branco. No máximo 1 por frase (`destaques` no plano).
+- **Títulos**: linha pequena Montserrat 700 ~44 px + filete bordô curto embaixo + linha grande Montserrat 800 ~72 px com a
+  palavra-chave em caixa bordô (`caixa`). Linha pequena entra primeiro; a grande entra com desfoque. Substitui a legenda.
+- **Listas** (quando ela enumera): itens empilhados e centralizados, Montserrat 800 ~64 px, bolinha bordô; cada item entra na palavra falada.
+- Roupa clara (ou fundo claro) atrás da legenda: sombra mais densa (`sombra_legenda` no plano), nunca contorno.
+
+Regras antigas (karaokê), valem só se ela pedir de volta:
 - 2 a 4 palavras por bloco, em 1 ou 2 linhas, centralizadas.
 - Fonte Montserrat **Bold (700)** — mais grossa que a SemiBold (correção de 09/11/2026) —, em letras normais (sem CAIXA ALTA), branca, só com sombra suave — sem contorno preto grosso e sem fonte condensada pesada (correção de 04/11/2026).
 - Tamanho: ~3% da altura do quadro (≈ 58 px em 1080×1920).
@@ -92,7 +103,7 @@ salvo pedido diferente da Dra. Annette na hora.
 - Voz isolada e limpa, sempre na frente.
 - Efeitos sutis: "pop" no título grande, som de teclado na lista digitada.
 - **Som da transição:** mistura de dois sons (sopro suave + tom delicado e harmônico), **bem baixo — cerca de 27 dB abaixo do pico da voz** (correção de 09/11/2026: "achei muito alto"), nunca um whoosh seco/grosso (correção de 04/11/2026).
-- Entrega a **−10 LUFS ou mais alto** (voz mais alta — correções de 09/11/2026; antes −14, depois −12; no 6x1 com locução, alvo −9 e limitador a −1 dBFS), pico ≤ −1 dBTP. As referências variaram de −8 a −28 LUFS; padronizar.
+- Entrega a **−8 LUFS** (correção de 26/11/2026: "aumente o volume"; antes −10) (voz mais alta — correções de 09/11/2026; antes −14, depois −12; no 6x1 com locução, alvo −9 e limitador a −1 dBFS), pico ≤ −1 dBTP. As referências variaram de −8 a −28 LUFS; padronizar.
 - Se ela pedir trilha: a batida original da skill (`elementos/audio/sons.py`) ou música de biblioteca licenciada (CapCut ou Instagram). Nunca copiar a faixa das referências nem usar as músicas de exemplo do kit.
 
 ## Encerramento (últimos 3–5 s)
@@ -135,3 +146,15 @@ Limitação: não foi possível ouvir as trilhas para dizer gênero ou batida. S
 - 2026-11-10 — Nova locução (WhatsApp) com zumbido de motor/ventilador a 55,7 Hz e harmônicos e ruído antes da primeira palavra: zumbido tirado com filtros estreitos, sem afftdn, agudos amaciados, ruído inicial silenciado. Sincronia: −30 a 0 ms por bloco.
 - 2026-11-10 — "Na primeira parte ele fecha os olhos e engole para iniciar a nova fala": fim do trecho "Entenda os três principais pontos" preso a 9,36 s da gravação (ele fecha os olhos a partir de 9,40 s). Regra: conferir o fim de cada trecho quadro a quadro.
 - 2026-11-10 — "O áudio tá estranho, não tá sincronizado, tem palavras repetidas, tem horas que fica calado": (1) um trecho de fala compartilhado entre dois blocos entrava duas vezes ("Segundo, segundo") — o sync_vo.py agora divide o trecho; (2) a voz esticada/encolhida embolava palavras ("acordo ou convenção", "ou menos") — voz volta a ficar intacta e só a imagem se ajusta. Conferência obrigatória: transcrição do áudio final x locução, palavra por palavra.
+- 2026-11-26 — "Reproduza o mesmo padrão de legendas do vídeo de referência; não utilize um estilo diferente por preferência própria": legenda passa a ser a do reel de referência (frase inteira, só a expressão-chave em caixa bordô, títulos Montserrat 800 com filete, listas com bolinha) — `gen_comp_ref.py`. Substitui o karaokê palavra por palavra e a palavra grande em Playfair.
+- 2026-11-26 — Roupa branca: legenda branca perdia contraste; sombra mais densa (sem contorno).
+- 2026-11-26 — Áudios separados, um por gravação: quando o áudio foi gravado junto com o vídeo, medir o deslocamento fixo por correlação (janelas de 2 s, conferir que não varia) e usar `"deslocamento"` no bloco — sincronia exata, vídeo em 1,00×. Quando é regravação com outras palavras, casar frase a frase com o trecho do vídeo que diz algo parecido (`"linear": true`, velocidade constante) em vez de deixar o alinhamento cortar a cada 0,6 s. Tirar os "vai" de quem grava e falas depois do fim.
+- 2026-11-26 — Voz: RNNoise cheio comia sílabas (Whisper do áudio tratado errava "só vale", "nessa sexta-feira"); usar redução estacionária pelo perfil do chiado (`"perfil_ruido"` com trechos sem fala, 80%), sem portão. Conferir a transcrição antes e depois.
+- 2026-11-26 — Luz: rosto escuro (Y ~126) clareado com curva de meios-tons (`"curvas"` no plano), sem estourar o fundo branco.
+- 2026-11-26 — Zoom: aproximações gradativas (1,07× em ~1,5 s, sine) só nos momentos-chave, no lugar do punch de 0,4 s.
+- 2026-11-26 — "Retira o ruído, use o áudio exclusivo enviado, aumente o volume, sincronize; a primeira parte tá totalmente sem sincronização; os áudios estão diferentes, coloque todos no mesmo volume e deixe igual": (1) cada áudio separado é limpo com o perfil do PRÓPRIO chiado (92%) e os três são igualados em timbre (curva média, ±6 dB) e em volume antes de juntar (`montar_vo`); (2) entrega a −8 LUFS, partes a ±0,4 LU uma da outra; (3) regravação com outras palavras: imagem presa palavra por palavra onde a fala coincide (`"ancoras": true`, `"pares"` para prender à mão) — boca a ±50 ms; (4) ~~desfocar o fundo onde não há fala equivalente~~ — REJEITADO em 26/11 (ver regra seguinte).
+- 2026-11-26 — "A primeira parte tá horrível… tira isso embaçado pelo amor de Deus": **nunca desfocar/embaçar o vídeo** (desfocar.py foi removido do kit). Quando o áudio separado é de outra tomada, procurar entre TODAS as gravações do mesmo trecho (ex.: IMG_3867 + IMG_3868) o pedaço em que a boca diz as mesmas palavras e montar frase a frase (pode até pular para outro instante: "Vai" / "comprar" / "fora da loja" de momentos diferentes), alternando plano aberto/fechado em cada troca. Conferir palavra por palavra (boca a ±50 ms). Frase sem equivalente em nenhum vídeo: plano mais aberto com fala natural dela, sem efeito; avisar a Dra. Annette e pedir o vídeo gravado junto com o áudio.
+- 2026-11-26 — "Use os dois vídeos da introdução para casar com áudio, tá ficando estranho" (escolheu o som dos próprios vídeos): quando o áudio separado é de outra tomada e não existe o vídeo gravado junto, usar o **som do próprio vídeo** daquele trecho (aqui IMG_3868 até "contratos" + IMG_3867 no final), limpo com o perfil do próprio chiado e igualado em timbre/volume aos áudios separados das outras partes — sincronia exata, vídeo em 1,00×, sem picotar. Montar frase a frase com outras palavras ficou "estranho". Tirar a deixa "vai" de quem grava (no IMG_3868 havia "Vai. Vai, comprar…").
+- 2026-11-26 — "No lugar de comprados tá contratos… é apenas produtos comprados": o Whisper errou ("produtos feitos e contratos"); a fala era "produtos comprados". Legenda corrigida. Regra: em palavra duvidosa, conferir pelo desenho de energia (quantas sílabas/pausas) e, na dúvida, perguntar — nunca legendar palpite do Whisper que mude o sentido.
+- 2026-11-26 — "Faz o corte nessa parte que ela fala feitos e deixa apenas comprados": palavra errada dita pela própria pessoa sai do ÁUDIO e da imagem (REMOVER no montar_vo: 23,18–23,57 s do IMG_3868, "fei…" + pausa), com troca de plano exatamente na emenda (bloco separado com o novo deslocamento). Achar o ponto pelo desenho de energia e conferir com o Whisper em janela longa (≥ 10 s) — janelas curtas inventam palavras; cortar até 23,715 comia o "com" de "comprados".
+

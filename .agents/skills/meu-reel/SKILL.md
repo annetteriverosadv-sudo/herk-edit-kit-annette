@@ -38,8 +38,9 @@ Ela não programa: antes de cada passo, diga em **uma frase simples** o que vai 
    envie e **espere ela aprovar**. Pausas ≥ 0,30 s podem ser cortadas sem perguntar.
 6. **Cortar.** `python3 scripts/edl.py` e `python3 scripts/render_cut.py` (usa os originais 4K, limpa a voz).
    Confira uma folha de contato: olhos na mesma altura em todos os trechos.
-7. **Legenda e animações.** `python3 scripts/gen_comp.py`, depois `npx hyperframes lint` (0 erros).
-   Legenda palavra por palavra: Montserrat Bold (700), letras normais, caixa bordô na palavra falada.
+7. **Legenda e animações.** `python3 scripts/gen_comp_ref.py` (padrão do reel de referência, 26/11/2026), depois
+   `npx hyperframes lint` (0 erros). Frase inteira, Montserrat Bold, só a expressão-chave em caixa bordô.
+   (`gen_comp.py` = estilo antigo de karaokê, só se ela pedir.)
    Recursos do plano (ver `_novidades_2026_11_09` no plano de exemplo): aproximações suaves, planos à mão,
    lista digitada, destaques em bordô, light leak, correção de luz por gravação.
 8. **Som.** `python3 scripts/make_audio.py` (voz + transições e toques, **sem música de fundo**; mixagem a −10 LUFS).
@@ -50,6 +51,18 @@ Ela não programa: antes de cada passo, diga em **uma frase simples** o que vai 
     registre em `VERIFY.md` e envie. Diga sempre que o som foi conferido só por medição.
 11. **Correções.** Toda correção dela vira regra nova, com data, na seção "Correções" do [DESIGN.md](DESIGN.md)
     (e a regra antiga é ajustada). Se for sobre o processo, ajuste esta skill também.
+
+## Áudios separados, um por gravação (26/11/2026)
+
+1. Transcreva cada áudio e cada vídeo; compare os textos para saber o par de cada um (avise se algum não casar).
+2. Meça o deslocamento por correlação (janelas de 2 s). Gravado junto → `"deslocamento"` no bloco (vídeo em 1,00×).
+   Áudio de OUTRA tomada (palavras diferentes do vídeo): peça o vídeo gravado junto. Se não existir, ofereça usar o
+   **som do próprio vídeo** naquele trecho (limpo e igualado aos outros) — foi a escolha dela em 26/11/2026; montar frase a
+   frase com outras palavras ficou "estranho" e desfocar foi rejeitado ("tira isso embaçado").
+   Palavra errada dita por ela (ex.: "fei…" antes de "comprados"): `REMOVER` no montar_vo + bloco separado com o novo deslocamento.
+3. Junte os áudios numa locução única com `montar_vo_exemplo.py` (janelas sem os "vai" de quem grava; correções de grafia
+   e pontuação da legenda) e siga o fluxo da locução abaixo com `sync_vo.py`.
+4. Legenda: `gen_comp_ref.py` (padrão da referência). Depois `make_audio.py` e render.
 
 ## Quando o áudio da gravação não presta: locução à parte
 
