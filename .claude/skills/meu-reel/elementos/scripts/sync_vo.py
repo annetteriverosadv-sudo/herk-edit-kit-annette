@@ -33,6 +33,7 @@ R_MIN, R_MAX = 0.65, 1.6          # velocidade do vídeo permitida
 A_MIN, A_MAX = 1.0, 1.0           # 10/11: voz intacta (esticar a voz deixou "estranho", embolou palavras); só a imagem se ajusta
 DERIVA = 0.06                     # atraso/adiantamento máximo da boca antes de um jump cut (s)
 SO_PLANO = "--plano" in sys.argv
+SO_AUDIO = "--so-audio" in sys.argv
 
 
 def norm(s):
@@ -208,7 +209,7 @@ for bv, bp in zip(L["blocos"], PLANO["blocos"]):
     tw = take_words[bp["take"]]
     sa = ref(tw, bp["de"]); sb = ref(tw, bp["ate"], sa)
     blocos.append(dict(nome=bp["nome"], take=bp["take"], vo=(a, b), src=(sa, sb),
-                       burn=bp.get("burn", True), fixo=bp.get("plano")))
+                       burn=bp.get("burn", True), fixo=bp.get("plano"), desl=bp.get("deslocamento"), linear=bp.get("linear", False), ancoras=bp.get("ancoras", False), pares=bp.get("pares", []), ajuste=bp.get("ajuste", 0.0)))
 
 
 # um trecho de fala nunca pode pertencer a dois blocos (o áudio entraria duas vezes: "Segundo, segundo")
@@ -224,7 +225,30 @@ for bl0, bl1 in zip(blocos, blocos[1:]):
 
 def mapa_bloco(bl):
     a, b = bl["vo"]; sa, sb = bl["src"]; tw = take_words[bl["take"]]
-    v0, v1 = runs[W[a]["run"]][0] - 0.15, runs[W[b]["run"]][1] + 0.15
+    v0, v1 = max(0.0, runs[W[a]["run"]][0] - 0.15), runs[W[b]["run"]][1] + 0.15
+    if bl.get("desl") is not None:  # áudio gravado junto com o vídeo: deslocamento fixo, sem alinhar som a som
+        tx = np.array([v0, v1]); return tx, tx - bl["desl"]
+    if bl.get("ancoras"):
+        SIN = {"pra": "para", "compro": "comprou", "compra": "comprou", "pega": "pegue", "lojas": "loja", "ficicas": "fisica", "ficica": "fisica"}
+        nn = lambda x: SIN.get(norm(x), norm(x))
+        va_ = [nn(W[i]["text"]) for i in range(a, b + 1)]; vs_ = [nn(tw[j]["text"]) for j in range(sa, sb + 1)]
+        cand = []
+        for m in difflib.SequenceMatcher(None, va_, vs_, autojunk=False).get_matching_blocks():
+            for k in range(m.size):
+                wv, ws = W[a + m.a + k], tw[sa + m.b + k]
+                cand += [(wv["start"], ws["start"]), ((wv["start"] + wv["end"]) / 2, (ws["start"] + ws["end"]) / 2)]
+        for pv, ps in bl.get("pares", []):  # âncora à mão: palavra da locução -> palavra do vídeo
+            cand.append((W[ref(W, pv)]["start"], tw[ref(tw, ps)]["start"]))
+        cand.sort()
+        tx, ty = [W[a]["start"]], [tw[sa]["start"] + bl["ajuste"]]
+        for p_, q_ in cand:
+            if p_ > tx[-1] + 0.02 and q_ + bl["ajuste"] > ty[-1] + 0.01:
+                tx.append(p_); ty.append(q_ + bl["ajuste"])
+        if W[b]["end"] > tx[-1] + 0.02 and tw[sb]["end"] > ty[-1] + 0.01:
+            tx.append(W[b]["end"]); ty.append(tw[sb]["end"] + bl["ajuste"])
+        return np.array(tx), np.array(ty)
+    if bl.get("linear"):  # outra tomada com outras palavras: velocidade constante entre a 1ª e a última palavra
+        return np.array([W[a]["start"], W[b]["end"]]), np.array([tw[sa]["start"], tw[sb]["end"]]) + bl["ajuste"]
     s0, s1 = max(0, tw[sa]["start"] - 0.6), tw[sb]["end"] + 0.6
     return mapa_trecho(bl["take"], v0, v1, s0, s1)
 
@@ -288,7 +312,7 @@ for bi, bl in enumerate(blocos):
         if len(ts) > 2 and ts[-1] - ts[-2] < PASSO / 2: ts.pop(-2)
         ts = np.array(ts)
         yv = np.array([f_map(m, t) for t in ts])
-        if len(yv) > 2: yv = np.convolve(np.pad(yv, 1, mode="edge"), [0.25, 0.5, 0.25], mode="valid")
+        if len(yv) > 2 and bl.get("desl") is None and not bl.get("linear") and not bl.get("ancoras"): yv = np.convolve(np.pad(yv, 1, mode="edge"), [0.25, 0.5, 0.25], mode="valid")
         # 09/11 "velocidade correta": o vídeo fica perto da velocidade real e a VOZ se ajusta (sem mudar o tom)
         dvo = np.diff(ts); dsrc = np.maximum(np.diff(yv), 0.01)
         amax = np.full(len(dvo), A_MAX); rmin_k = np.full(len(dvo) + 1, R_MIN)
@@ -395,7 +419,8 @@ def job(kc):
     dur_in = c["src_out"] - c["src_in"] + 0.2
     vf = (f"setpts=PTS-STARTPTS,setpts='({setpts_expr(c['pecas'])})/TB',"
           f"crop={w}:{h}:{x}:{y},scale=1080:1920:flags=lanczos,"
-          f"colorchannelmixer=rr={0.98 * g:.3f}:gg={g:.3f}:bb={1.035 * g:.3f},"
+          + (f"curves=all='{PLANO['curvas']}'," if PLANO.get("curvas") else "")
+          + f"colorchannelmixer=rr={0.98 * g:.3f}:gg={g:.3f}:bb={1.035 * g:.3f},"
           f"eq=contrast=1.03:saturation=1.02,unsharp=5:5:0.35:5:5:0,fps={FPS},setsar=1,"
           f"trim=end_frame={c['frames']},setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop={c['frames']}")
     out = os.path.join(TMP, f"v{k:02d}.mp4")
@@ -407,8 +432,11 @@ def job(kc):
     return out
 
 
-with ThreadPoolExecutor(2) as ex:
-    outs = list(ex.map(job, enumerate(clips)))
+if SO_AUDIO:
+    outs = [os.path.join(TMP, f"v{k:02d}.mp4") for k in range(len(clips))]
+else:
+    with ThreadPoolExecutor(2) as ex:
+        outs = list(ex.map(job, enumerate(clips)))
 lst = os.path.join(TMP, "list.txt")
 open(lst, "w").write("".join(f"file '{o}'\n" for o in outs))
 
@@ -450,22 +478,33 @@ for g_ in AUDIO:
     partes.append(seg)
 voz = np.concatenate(partes)
 sf.write(caminho("assets", "voice_vo_raw.wav"), voz, SR, subtype="PCM_16")
-# tratamento leve: a locução já é limpa e de perto; conserta picos estourados (adeclip), graves, chiado e uniformidade
 RNN = os.environ.get("RNNOISE_MODEL") or os.path.expanduser("~/tools/models/sh.rnnn")
-# 09/11 "reduz os ruídos, isola a voz, retira o barulho do fundo": RNNoise cheio + redução espectral leve +
-# expansor nas pausas; depois presença, compressão e volume.
-# zumbido da locução (motor/ventilador): frequências medidas nos silêncios dela -> "zumbido" no plano
+entrada = caminho("assets", "voice_vo_raw.wav")
+# 26/11/2026: RNNoise cheio comia sílabas ("só vale" -> "trabalha", "nessa sexta-feira" -> "na sessão de feira").
+# Com "perfil_ruido" no plano: redução estacionária pelo perfil do chiado (trechos sem fala), 80%; sem RNNoise e sem portão.
+if L.get("perfil_ruido"):
+    import noisereduce as nr
+    amostra = np.concatenate([sf.read(caminho(f), dtype="float64")[0][int(a * SR):int(b * SR)] for f, a, b in L["perfil_ruido"]])
+    voz_nr = nr.reduce_noise(y=voz, sr=SR, y_noise=amostra, stationary=True, prop_decrease=L.get("reducao", 0.8),
+                             n_fft=2048, freq_mask_smooth_hz=300, time_mask_smooth_ms=60)
+    entrada = caminho("assets", "voice_vo_nr.wav"); sf.write(entrada, voz_nr, SR, subtype="PCM_16")
+    cadeia_ruido, portao = "", ""
+elif L.get("rnnoise", True):
+    cadeia_ruido = f"arnndn=m='{RNN}':mix=1,"
+    portao = "agate=threshold=0.035:ratio=4:range=0.03:attack=3:release=160:knee=3,"
+else:  # ruído já tirado antes (montar_vo.py: perfil de cada arquivo)
+    cadeia_ruido, portao = "", ""
 notch = "".join(f"equalizer=f={hz}:t=h:w={4 if hz < 80 else 6}:g={-30 if k == 0 else -15}," for k, hz in enumerate(L.get("zumbido", [])))
-# 10/11 "retire os ruídos e deixe harmonioso": sem afftdn (comia o "ou" de "ou menos"); RNNoise cheio,
-# presença suave, agudos amaciados, compressão e expansor depois dela (pausas quietas)
-cadeia = (f"adeclip,highpass=f=85:poles=2,{notch}arnndn=m='{RNN}':mix=1,"
+# presença suave, corpo de microfone perto (170 Hz), caixa (380 Hz) cortada, agudos amaciados, compressão
+cadeia = (f"adeclip,highpass=f=85:poles=2,{notch}{cadeia_ruido}"
           "loudnorm=I=-20:TP=-3:LRA=11:linear=true,"
-          "deesser=i=0.35,equalizer=f=200:t=q:w=1:g=-1,equalizer=f=3000:t=q:w=1.2:g=2,highshelf=f=9000:g=-1.5,"
-          "acompressor=threshold=-24dB:ratio=3:attack=6:release=130:makeup=3,"
-          "agate=threshold=0.035:ratio=4:range=0.03:attack=3:release=160:knee=3,"
+          "deesser=i=0.35,equalizer=f=170:t=q:w=1:g=2,equalizer=f=380:t=q:w=1.2:g=-2,equalizer=f=3000:t=q:w=1.2:g=2,highshelf=f=9000:g=-1.5,"
+          f"acompressor=threshold=-24dB:ratio=3:attack=6:release=130:makeup=3,{portao}"
           "loudnorm=I=-15:TP=-1.5:LRA=6")
-subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", caminho("assets", "voice_vo_raw.wav"),
+subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", entrada,
                 "-af", cadeia, "-ar", str(SR), "-c:a", "pcm_s16le", caminho("assets", "voice.wav")], check=True)
+if SO_AUDIO:
+    print("ok: assets/voice.wav (só áudio)"); sys.exit(0)
 subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", lst,
                 "-i", caminho("assets", "voice.wav"), "-map", "0:v", "-map", "1:a", "-c:v", "copy",
                 "-c:a", "aac", "-b:a", "192k", "-shortest", caminho("assets", "cut.mp4")], check=True)
